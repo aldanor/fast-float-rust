@@ -21,3 +21,6 @@ harness = false
 name = "fast_float"
 path = "src/lib.rs"
 bench = false
+
+[workspace]
+members = [".", "extras/data-tests"]
