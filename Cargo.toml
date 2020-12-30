@@ -1,0 +1,5 @@
+[package]
+name = "fast-float"
+version = "0.1.0"
+authors = ["Ivan Smirnov <i.s.smirnov@gmail.com>"]
+edition = "2018"
