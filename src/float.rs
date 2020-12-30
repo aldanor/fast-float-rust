@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use std::ops::{Div, Mul, Neg};
+use std::ops::{Add, Div, Mul, Neg};
 
 mod private {
     pub trait Sealed {}
@@ -12,7 +12,9 @@ pub trait Float:
     + Div<Output = Self>
     + Neg<Output = Self>
     + Mul<Output = Self>
+    + Add<Output = Self>
     + PartialEq
+    + PartialOrd
     + Default
     + Clone
     + Copy
