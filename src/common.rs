@@ -1,4 +1,113 @@
+use std::marker::PhantomData;
 use std::ptr;
+use std::slice;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AsciiStr<'a> {
+    ptr: *const u8,
+    end: *const u8,
+    _marker: PhantomData<&'a [u8]>,
+}
+
+impl<'a> AsciiStr<'a> {
+    #[inline]
+    pub fn new(s: &'a [u8]) -> Self {
+        Self {
+            ptr: s.as_ptr(),
+            end: unsafe { s.as_ptr().add(s.len()) },
+            _marker: Default::default(),
+        }
+    }
+
+    #[inline]
+    pub fn step_by(&mut self, n: usize) -> &mut Self {
+        unsafe { self.ptr = self.ptr.add(n) };
+        self
+    }
+
+    #[inline]
+    pub fn step(&mut self) -> &mut Self {
+        self.step_by(1)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.ptr == self.end
+    }
+
+    #[inline]
+    pub fn first(&self) -> u8 {
+        unsafe { *self.ptr }
+    }
+
+    #[inline]
+    pub fn first_is(&self, c: u8) -> bool {
+        self.first() == c
+    }
+
+    #[inline]
+    pub fn first_either(&self, c1: u8, c2: u8) -> bool {
+        let c = self.first();
+        c == c1 || c == c2
+    }
+
+    #[inline]
+    pub fn check_first(&self, c: u8) -> bool {
+        !self.is_empty() && self.first() == c
+    }
+
+    #[inline]
+    pub fn check_first_either(&self, c1: u8, c2: u8) -> bool {
+        !self.is_empty() && (self.first() == c1 || self.first() == c2)
+    }
+
+    #[inline]
+    pub fn check_first_digit(&self) -> bool {
+        !self.is_empty() && self.first().is_ascii_digit()
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &'a [u8] {
+        unsafe { slice::from_raw_parts(self.ptr, self.end.offset_from(self.ptr).max(0) as _) }
+    }
+
+    #[inline]
+    pub fn parse_digits(&mut self, mut func: impl FnMut(u8)) {
+        while !self.is_empty() && self.first().is_ascii_digit() {
+            func(self.first() - b'0');
+            self.step();
+        }
+    }
+
+    #[inline]
+    pub fn check_len(&self, n: usize) -> bool {
+        unsafe { self.ptr.add(n) <= self.end }
+    }
+
+    #[inline]
+    pub fn try_read_u64(&self) -> Option<u64> {
+        if self.check_len(8) {
+            Some(self.read_u64())
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn read_u64(&self) -> u64 {
+        debug_assert!(self.check_len(8));
+        let mut value = 0u64;
+        let src = self.ptr;
+        let dst = &mut value as *mut _ as *mut u8;
+        unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
+        value
+    }
+
+    #[inline]
+    pub fn offset_from(&self, other: &Self) -> isize {
+        unsafe { self.ptr.offset_from(other.ptr) } // assuming the same end
+    }
+}
 
 // Most of these are inherently unsafe; we assume we know what we're calling and when.
 pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {

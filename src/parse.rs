@@ -20,7 +20,7 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, &
     if let Some(value) = num.try_fast_path::<F>() {
         return Some((value, rest));
     }
-    let mut am = if num.many_digits {
+    let mut am = if num.mantissa == u64::MAX {
         parse_long_mantissa::<F>(s)
     } else {
         compute_float_from_exp_mantissa::<F>(num.exponent, num.mantissa)

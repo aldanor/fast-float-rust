@@ -1,4 +1,4 @@
-use crate::common::{is_8digits_le, ByteSlice};
+use crate::common::{is_8digits_le, AsciiStr, ByteSlice};
 use crate::float::Float;
 use crate::format::FloatFormat;
 
@@ -7,7 +7,6 @@ pub struct Number {
     pub exponent: i64,
     pub mantissa: u64,
     pub negative: bool,
-    pub many_digits: bool,
 }
 
 impl Number {
@@ -43,7 +42,7 @@ fn parse_8digits_le(mut v: u64) -> u64 {
     const MUL1: u64 = 0x000F424000000064;
     const MUL2: u64 = 0x0000271000000001;
     v -= 0x3030303030303030;
-    v = v.wrapping_mul(10).wrapping_add(v >> 8);
+    v = (v * 10) + (v >> 8); // will not overflow, fits in 63 bits
     let v1 = (v & MASK).wrapping_mul(MUL1);
     let v2 = ((v >> 16) & MASK).wrapping_mul(MUL2);
     let v = (v1.wrapping_add(v2) >> 32) as u32;
@@ -51,129 +50,123 @@ fn parse_8digits_le(mut v: u64) -> u64 {
 }
 
 #[inline]
-fn try_parse_digits(s: &mut &[u8], i: &mut u64) {
-    // may cause overflows, to be handled later
-    while !s.is_empty() && s.get_first().is_ascii_digit() {
-        // TODO: wrapping sub b'0' first and then check just for < b'9'?
-        let digit = s.get_first() - b'0';
-        *i = i.wrapping_mul(10).wrapping_add(digit as _);
-        *s = s.advance(1);
-    }
+fn try_parse_digits(s: &mut AsciiStr<'_>, x: &mut u64) {
+    s.parse_digits(|digit| {
+        *x = x.wrapping_mul(10).wrapping_add(digit as _); // overflows to be handled later
+    });
 }
 
 #[inline]
-fn try_parse_8digits_le(s: &mut &[u8], i: &mut u64) -> bool {
+fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
     // may cause overflows, to be handled later
+    let mut count = 0;
     if cfg!(target_endian = "little") {
-        if s.len() >= 8 {
-            let v = s.read_u64();
+        if let Some(v) = s.try_read_u64() {
             if is_8digits_le(v) {
-                let digits = parse_8digits_le(v);
-                *i = i.wrapping_mul(100000000).wrapping_add(digits);
-                *s = s.advance(8);
-                return true;
+                *x = x
+                    .wrapping_mul(1_0000_0000)
+                    .wrapping_add(parse_8digits_le(v));
+                s.step_by(8);
+                count = 8;
+                if let Some(v) = s.try_read_u64() {
+                    if is_8digits_le(v) {
+                        *x = x
+                            .wrapping_mul(1_0000_0000)
+                            .wrapping_add(parse_8digits_le(v));
+                        s.step_by(8);
+                        count = 16;
+                    }
+                }
             }
         }
     }
-    false
+    count
 }
 
 #[inline]
-fn parse_scientific(s: &mut &[u8], exponent: &mut i64, fixed: bool) -> Option<()> {
+fn parse_scientific(s: &mut AsciiStr<'_>, exponent: &mut i64, fixed: bool) -> Option<()> {
     // the first character is 'e' and scientific mode is enabled
     let start = *s;
+    s.step();
     let mut exp_num = 0i64;
-    *s = s.advance(1);
     let mut neg_exp = false;
     if !s.is_empty() {
-        if s.get_first() == b'-' {
-            *s = s.advance(1);
-            neg_exp = true;
-        } else if s.get_first() == b'+' {
-            *s = s.advance(1);
+        if s.first_either(b'-', b'+') {
+            neg_exp = s.first_is(b'-');
+            s.step();
         }
     }
-    if s.is_empty() || !s.get_first().is_ascii_digit() {
-        if !fixed {
-            // error: no integers following 'e'
-            return None;
-        }
-        *s = start; // ignore 'e'
-    } else {
-        while !s.is_empty() && s.get_first().is_ascii_digit() {
-            // TODO: wrapping sub b'0' first and then just check for < b'9'?
-            let digit = s.get_first() - b'0';
+    if s.check_first_digit() {
+        s.parse_digits(|digit| {
             if exp_num < 0x10000 {
                 exp_num = 10 * exp_num + digit as i64; // no overflows here
             }
-            *s = s.advance(1);
-        }
+        });
         *exponent += if neg_exp { -exp_num } else { exp_num };
+    } else if !fixed {
+        return None; // error: no integers following 'e'
+    } else {
+        *s = start; // ignore 'e' and return back
     }
     Some(())
 }
 
 #[inline]
-pub fn parse_number(mut s: &[u8], fmt: FloatFormat) -> Option<(Number, &[u8])> {
+pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, &[u8])> {
     // assuming s.len() >= 1
-    let c = s.get_first();
-    let negative = c == b'-';
+    let mut s = AsciiStr::new(s);
 
-    // handle leading +/-
-    if c == b'+' || c == b'-' {
-        s = s.advance(1);
-        if s.is_empty() {
-            // error: a single +/-
-            return None;
-        }
-        let c = s.get_first();
-        if !c.is_ascii_digit() && c != b'.' {
-            // error: +/- must be followed by 0-9 or dot
+    // handle optional +/- sign
+    let mut negative = false;
+    if s.first_either(b'-', b'+') {
+        negative = s.first_is(b'-');
+        if s.step().is_empty() {
             return None;
         }
     }
 
-    // parse initial digits
+    // parse initial digits before dot
     let mut mantissa = 0u64;
-    let start = s;
+    let digits_start = s;
     try_parse_digits(&mut s, &mut mantissa);
+    let mut n_digits = s.offset_from(&digits_start);
 
-    // handle dot following initial digits
+    // handle dot with the following digits
+    let mut n_after_dot = 0;
     let mut exponent = 0i64;
-    if !s.is_empty() && s.get_first() == b'.' {
-        s = s.advance(1);
-        let n = s.len();
-        if try_parse_8digits_le(&mut s, &mut mantissa) {
-            try_parse_8digits_le(&mut s, &mut mantissa);
-        }
+    if s.check_first(b'.') {
+        s.step();
+        let before = s;
+        try_parse_8digits_le(&mut s, &mut mantissa);
         try_parse_digits(&mut s, &mut mantissa);
-        exponent = -((n - s.len()) as i64);
+        n_after_dot = s.offset_from(&before);
+        exponent = -n_after_dot as i64;
     }
 
-    if s.len() == start.len() || (s.len() == start.len() - 1 && start.get_first() == b'.') {
-        // error: must have encountered at least one digit
+    n_digits += n_after_dot;
+    if n_digits == 0 {
         return None;
     }
-    let n_digits = start.len() - s.len() - 1;
 
     // handle scientific format
-    if fmt.scientific && !s.is_empty() && (s.get_first() == b'e' || s.get_first() == b'E') {
-        parse_scientific(&mut s, &mut exponent, fmt.fixed)?;
-    } else if fmt.scientific && !fmt.fixed {
-        // error: scientific and not fixed
-        return None;
+    if fmt.scientific {
+        if s.check_first_either(b'e', b'E') {
+            parse_scientific(&mut s, &mut exponent, fmt.fixed)?;
+        } else if !fmt.fixed {
+            return None; // error: scientific and not fixed
+        }
     }
 
     // handle uncommon case with many digits
-    let mut many_digits = false;
-    if n_digits >= 19 {
-        let mut p = start;
-        while !p.is_empty() && (p.get_first() == b'0' || p.get_first() == b'.') {
-            p = p.advance(1);
+    n_digits -= 19;
+    if n_digits > 0 {
+        let mut p = digits_start;
+        while p.check_first_either(b'0', b'.') {
+            n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
+            p.step();
         }
-        if n_digits + p.len() >= 19 + start.len() {
-            mantissa = 0xFFFFFFFFFFFFFFFF;
-            many_digits = true;
+        if n_digits > 0 {
+            mantissa = u64::MAX;
         }
     }
 
@@ -181,9 +174,8 @@ pub fn parse_number(mut s: &[u8], fmt: FloatFormat) -> Option<(Number, &[u8])> {
         exponent,
         mantissa,
         negative,
-        many_digits,
     };
-    Some((number, s))
+    Some((number, s.as_slice()))
 }
 
 #[inline]
