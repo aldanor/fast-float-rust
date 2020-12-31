@@ -15,8 +15,8 @@ macro_rules! check {
     ($ty:ty, $s:expr, $e:expr) => {{
         // eprintln!("\n\nCHECKING: {:?}", $s);
         let s = $s.as_bytes();
-        let (result, p) = fast_float::parse_float::<$ty>(s).unwrap();
-        assert!(p.is_empty());
+        let (result, n) = fast_float::parse_float::<$ty>(s).unwrap();
+        assert_eq!(n, s.len());
         let expected: $ty = $e;
         assert_eq!(result, expected);
         let lex = lexical_core::parse::<$ty>(s).unwrap();

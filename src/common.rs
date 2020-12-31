@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 use std::ptr;
-use std::slice;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AsciiStr<'a> {
@@ -64,11 +63,6 @@ impl<'a> AsciiStr<'a> {
     #[inline]
     pub fn check_first_digit(&self) -> bool {
         !self.is_empty() && self.first().is_ascii_digit()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
-        unsafe { slice::from_raw_parts(self.ptr, self.end.offset_from(self.ptr).max(0) as _) }
     }
 
     #[inline]

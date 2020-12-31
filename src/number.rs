@@ -112,9 +112,10 @@ fn parse_scientific(s: &mut AsciiStr<'_>, exponent: &mut i64, fixed: bool) -> Op
 }
 
 #[inline]
-pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, &[u8])> {
+pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
     // assuming s.len() >= 1
     let mut s = AsciiStr::new(s);
+    let start = s;
 
     // handle optional +/- sign
     let mut negative = false;
@@ -175,37 +176,37 @@ pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, &[u8])> {
         mantissa,
         negative,
     };
-    Some((number, s.as_slice()))
+    Some((number, s.offset_from(&start) as usize))
 }
 
 #[inline]
-pub fn parse_inf_nan<F: Float>(s: &[u8]) -> Option<(F, &[u8])> {
-    fn parse_inf_rest(s: &[u8]) -> &[u8] {
-        if s.len() >= 5 && s.eq_ignore_case(b"inity") {
-            &s[5..]
+pub fn parse_inf_nan<F: Float>(s: &[u8]) -> Option<(F, usize)> {
+    fn parse_inf_rest(s: &[u8]) -> usize {
+        if s.len() >= 8 && s[3..].eq_ignore_case(b"inity") {
+            8
         } else {
-            s
+            3
         }
     }
     if s.len() >= 3 {
         if s.eq_ignore_case(b"nan") {
-            return Some((F::NAN, s.advance(3)));
+            return Some((F::NAN, 3));
         } else if s.eq_ignore_case(b"inf") {
-            return Some((F::INFINITY, parse_inf_rest(s.advance(3))));
+            return Some((F::INFINITY, parse_inf_rest(s)));
         } else if s.len() >= 4 {
             if s.get_first() == b'+' {
                 let s = s.advance(1);
                 if s.eq_ignore_case(b"nan") {
-                    return Some((F::NAN, s.advance(3)));
+                    return Some((F::NAN, 4));
                 } else if s.eq_ignore_case(b"inf") {
-                    return Some((F::INFINITY, parse_inf_rest(s.advance(3))));
+                    return Some((F::INFINITY, 1 + parse_inf_rest(s)));
                 }
             } else if s.get_first() == b'-' {
                 let s = s.advance(1);
                 if s.eq_ignore_case(b"nan") {
-                    return Some((F::NEG_NAN, s.advance(3)));
+                    return Some((F::NEG_NAN, 4));
                 } else if s.eq_ignore_case(b"inf") {
-                    return Some((F::NEG_INFINITY, parse_inf_rest(s.advance(3))));
+                    return Some((F::NEG_INFINITY, 1 + parse_inf_rest(s)));
                 }
             }
         }

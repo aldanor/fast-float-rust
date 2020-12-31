@@ -8,7 +8,7 @@ use crate::number::{parse_inf_nan, parse_number};
 use crate::simple::parse_long_mantissa;
 
 #[inline]
-pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, &[u8])> {
+pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, usize)> {
     s = s.skip_spaces();
     if s.is_empty() {
         return None;
@@ -44,6 +44,6 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, &
 }
 
 #[inline]
-pub fn parse_float<F: Float>(s: &[u8]) -> Option<(F, &[u8])> {
+pub fn parse_float<F: Float>(s: &[u8]) -> Option<(F, usize)> {
     parse_float_fmt(s, Default::default())
 }
