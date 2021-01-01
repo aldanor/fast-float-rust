@@ -1,11 +1,13 @@
 mod random;
 
-use std::fs::read_to_string;
+use std::fs;
+use std::iter;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Instant;
 
-use lexical_core::FromLexical;
+use fastrand::Rng;
+use lexical::FromLexical;
 use structopt::StructOpt;
 
 use fast_float::Float;
@@ -49,12 +51,12 @@ enum Cmd {
         /// Number of random floats generated
         #[structopt(short, default_value = "100000")]
         number: usize,
-        /// Consise random float strings (if not, 17 digits are used)
-        #[structopt(short)]
-        concise: bool,
         /// Random generator seed
-        #[structopt(short)]
+        #[structopt(short, default_value = "0")]
         seed: u64,
+        /// Also save the generated inputs to file
+        #[structopt(short = "f", parse(from_os_str))]
+        filename: Option<PathBuf>,
     },
 }
 
@@ -163,7 +165,7 @@ fn main() {
     let opt: Opt = StructOpt::from_args();
     let (inputs, inputs_name) = match opt.command {
         Cmd::File { filename } => (
-            read_to_string(&filename)
+            fs::read_to_string(&filename)
                 .unwrap()
                 .trim()
                 .lines()
@@ -171,8 +173,20 @@ fn main() {
                 .collect::<Vec<_>>(),
             filename.to_str().unwrap().to_owned(),
         ),
-        _ => {
-            unimplemented!()
+        Cmd::Random {
+            gen,
+            number,
+            seed,
+            filename,
+        } => {
+            let mut rng = Rng::with_seed(seed);
+            let inputs: Vec<String> = iter::repeat_with(|| gen.gen(&mut rng))
+                .take(number)
+                .collect();
+            if let Some(filename) = filename {
+                fs::write(filename, inputs.join("\n")).unwrap();
+            }
+            (inputs, format!("{}", gen))
         }
     };
     let repeat = opt.repeat.max(1);
