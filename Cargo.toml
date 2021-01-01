@@ -24,3 +24,7 @@ bench = false
 
 [workspace]
 members = [".", "extras/data-tests", "extras/simple-bench"]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
