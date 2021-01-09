@@ -13,6 +13,7 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, u
     if s.is_empty() {
         return None;
     }
+
     let (num, rest) = match parse_number(s, fmt) {
         Some(r) => r,
         None => return parse_inf_nan(s),
@@ -20,14 +21,17 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, u
     if let Some(value) = num.try_fast_path::<F>() {
         return Some((value, rest));
     }
-    let mut am = if num.mantissa == u64::MAX {
-        parse_long_mantissa::<F>(s)
-    } else {
-        compute_float_from_exp_mantissa::<F>(num.exponent, num.mantissa)
-    };
+
+    let mut am = compute_float_from_exp_mantissa::<F>(num.exponent, num.mantissa);
+    if num.many_digits {
+        if am != compute_float_from_exp_mantissa::<F>(num.exponent, num.mantissa + 1) {
+            am.power2 = -1;
+        }
+    }
     if am.power2 < 0 {
         am = parse_long_mantissa::<F>(s);
     }
+
     let mut word = am.mantissa;
     word |= (am.power2 as u64) << F::MANTISSA_EXPLICIT_BITS;
     if num.negative {
@@ -40,6 +44,7 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, u
             *(&word as *const _ as *const F)
         }
     };
+
     Some((value, rest))
 }
 
