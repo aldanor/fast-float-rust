@@ -22,7 +22,7 @@ impl TestCase {
         }
     }
 
-    fn execute_one<F: fast_float::ParseFloat>(&self, expected: F) {
+    fn execute_one<F: fast_float::FastFloat>(&self, expected: F) {
         let r = F::parse_float_partial(&self.string);
         if !r.is_ok() {
             dbg!(self);
