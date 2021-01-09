@@ -139,15 +139,6 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
     }
 
     #[inline]
-    fn skip_spaces(&self) -> &[u8] {
-        let mut s = self.as_ref();
-        while !s.is_empty() && is_space(s.get_first()) {
-            s = s.advance(1);
-        }
-        s
-    }
-
-    #[inline]
     fn skip_chars(&self, c: u8) -> &[u8] {
         let mut s = self.as_ref();
         while s.check_first(c) {
@@ -185,16 +176,6 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
 }
 
 impl ByteSlice for [u8] {}
-
-#[inline]
-fn is_space(c: u8) -> bool {
-    const TABLE: [bool; 33] = [
-        false, false, false, false, false, false, false, false, false, true, true, true, true,
-        true, false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, true,
-    ];
-    (c <= 32) && unsafe { *TABLE.get_unchecked(c as usize) }
-}
 
 #[inline]
 pub fn is_8digits_le(v: u64) -> bool {

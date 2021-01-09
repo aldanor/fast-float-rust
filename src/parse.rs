@@ -1,15 +1,13 @@
 use std::mem;
 
 use crate::binary::compute_float_from_exp_mantissa;
-use crate::common::ByteSlice;
 use crate::float::Float;
 use crate::format::FloatFormat;
 use crate::number::{parse_inf_nan, parse_number};
 use crate::simple::parse_long_mantissa;
 
 #[inline]
-pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, usize)> {
-    s = s.skip_spaces();
+pub fn parse_float_fmt<F: Float>(s: &[u8], fmt: FloatFormat) -> Option<(F, usize)> {
     if s.is_empty() {
         return None;
     }
