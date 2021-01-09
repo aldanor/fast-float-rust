@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
-use std::ptr;
+use core::marker::PhantomData;
+use core::ptr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AsciiStr<'a> {

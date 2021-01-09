@@ -11,8 +11,7 @@
     clippy::cargo_common_metadata
 )]
 
-use std::error::Error as StdError;
-use std::fmt::{self, Display};
+use core::fmt::{self, Display};
 
 mod binary;
 mod common;
@@ -32,10 +31,15 @@ impl Display for Error {
     }
 }
 
-impl StdError for Error {}
+#[cfg(feature = "std")]
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        "error while parsing a float"
+    }
+}
 
 /// Result type alias for fast-float parsing functions.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 /// Trait for numerical float types that can be parsed from string.
 pub trait FastFloat: float::Float {

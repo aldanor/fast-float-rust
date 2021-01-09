@@ -5,13 +5,17 @@ authors = ["Ivan Smirnov <i.s.smirnov@gmail.com>"]
 repository = "https://github.com/aldanor/fast-float-rust"
 documentation = "https://docs.rs/fast-float"
 description = "Fast floating-point number parser."
-keywords = ["parser", "parsing", "parse", "float"]
-categories = ["parser-implementations", "parsing", "text-processing", "algorithms"]
+keywords = ["parser", "parsing", "parse", "float", "no-std"]
+categories = ["parser-implementations", "parsing", "text-processing", "algorithms", "no-std"]
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 autobenches = false
 edition = "2018"
 exclude = ["benches/*", "extras/*"]
+
+[features]
+default = ["std"]
+std = []
 
 [dev-dependencies]
 lexical-core = "0.7"
@@ -37,3 +41,6 @@ members = [".", "extras/data-tests", "extras/simple-bench"]
 [profile.release]
 lto = "fat"
 codegen-units = 1
+
+[package.metadata.docs.rs]
+features = ["std"]

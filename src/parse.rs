@@ -1,4 +1,4 @@
-use std::mem;
+use core::mem;
 
 use crate::binary::compute_float;
 use crate::float::Float;
