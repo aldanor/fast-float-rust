@@ -2,7 +2,7 @@ use crate::common::AdjustedMantissa;
 use crate::float::Float;
 
 #[inline]
-pub fn compute_float_from_exp_mantissa<F: Float>(q: i64, mut w: u64) -> AdjustedMantissa {
+pub fn compute_float<F: Float>(q: i64, mut w: u64) -> AdjustedMantissa {
     let am_zero = AdjustedMantissa::zero_pow2(0);
     let am_inf = AdjustedMantissa::zero_pow2(F::INFINITE_POWER);
     let am_error = AdjustedMantissa::zero_pow2(-1);
@@ -15,7 +15,7 @@ pub fn compute_float_from_exp_mantissa<F: Float>(q: i64, mut w: u64) -> Adjusted
     let lz = w.leading_zeros();
     w <<= lz;
     let (lo, hi) = compute_product_approx(q, w, F::MANTISSA_EXPLICIT_BITS + 3);
-    if lo == 0xFFFFFFFFFFFFFFFF {
+    if lo == 0xFFFF_FFFF_FFFF_FFFF {
         let inside_safe_exponent = (q >= -27) && (q <= 55);
         if !inside_safe_exponent {
             return am_error;
@@ -31,25 +31,24 @@ pub fn compute_float_from_exp_mantissa<F: Float>(q: i64, mut w: u64) -> Adjusted
         mantissa >>= -power2 + 1;
         mantissa += mantissa & 1;
         mantissa >>= 1;
-        power2 = (mantissa >= (1u64 << F::MANTISSA_EXPLICIT_BITS)) as i32;
+        power2 = (mantissa >= (1_u64 << F::MANTISSA_EXPLICIT_BITS)) as i32;
         return AdjustedMantissa { mantissa, power2 };
     }
     if lo <= 1
         && q >= F::MIN_EXPONENT_ROUND_TO_EVEN as i64
         && q <= F::MAX_EXPONENT_ROUND_TO_EVEN as i64
         && mantissa & 3 == 1
+        && (mantissa << (upperbit + 64 - F::MANTISSA_EXPLICIT_BITS as i32 - 3)) == hi
     {
-        if (mantissa << (upperbit + 64 - F::MANTISSA_EXPLICIT_BITS as i32 - 3)) == hi {
-            mantissa &= !1u64;
-        }
+        mantissa &= !1_u64;
     }
     mantissa += mantissa & 1;
     mantissa >>= 1;
-    if mantissa >= (2u64 << F::MANTISSA_EXPLICIT_BITS) {
-        mantissa = 1u64 << F::MANTISSA_EXPLICIT_BITS;
+    if mantissa >= (2_u64 << F::MANTISSA_EXPLICIT_BITS) {
+        mantissa = 1_u64 << F::MANTISSA_EXPLICIT_BITS;
         power2 += 1;
     }
-    mantissa &= !(1u64 << F::MANTISSA_EXPLICIT_BITS);
+    mantissa &= !(1_u64 << F::MANTISSA_EXPLICIT_BITS);
     if power2 >= F::INFINITE_POWER {
         return am_inf;
     }
@@ -58,7 +57,7 @@ pub fn compute_float_from_exp_mantissa<F: Float>(q: i64, mut w: u64) -> Adjusted
 
 #[inline]
 fn power(q: i32) -> i32 {
-    (q.wrapping_mul(152170 + 65536) >> 16) + 63
+    (q.wrapping_mul(152_170 + 65536) >> 16) + 63
 }
 
 #[inline]
@@ -77,9 +76,9 @@ fn compute_product_approx(q: i64, w: u64, precision: usize) -> (u64, u64) {
     debug_assert!(precision <= 64);
 
     let mask = if precision < 64 {
-        0xFFFFFFFFFFFFFFFFu64 >> precision
+        0xFFFF_FFFF_FFFF_FFFF_u64 >> precision
     } else {
-        0xFFFFFFFFFFFFFFFFu64
+        0xFFFF_FFFF_FFFF_FFFF_u64
     };
     let index = (q - SMALLEST_POWER_OF_FIVE as i64) as usize;
     let (lo5, hi5) = unsafe { *POWER_OF_FIVE_128.get_unchecked(index) };
@@ -98,6 +97,7 @@ const SMALLEST_POWER_OF_FIVE: i32 = -342;
 const LARGEST_POWER_OF_FIVE: i32 = 308;
 const N_POWERS_OF_FIVE: usize = (LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;
 
+#[allow(clippy::unreadable_literal)]
 const POWER_OF_FIVE_128: [(u64, u64); N_POWERS_OF_FIVE] = [
     (0xeef453d6923bd65a, 0x113faa2906a13b3f),
     (0x9558b4661b6565f8, 0x4ac7ca59a424c507),

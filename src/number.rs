@@ -41,15 +41,14 @@ impl Number {
 
 #[inline]
 fn parse_8digits_le(mut v: u64) -> u64 {
-    const MASK: u64 = 0x000000FF000000FF;
-    const MUL1: u64 = 0x000F424000000064;
-    const MUL2: u64 = 0x0000271000000001;
-    v -= 0x3030303030303030;
+    const MASK: u64 = 0x0000_00FF_0000_00FF;
+    const MUL1: u64 = 0x000F_4240_0000_0064;
+    const MUL2: u64 = 0x0000_2710_0000_0001;
+    v -= 0x3030_3030_3030_3030;
     v = (v * 10) + (v >> 8); // will not overflow, fits in 63 bits
     let v1 = (v & MASK).wrapping_mul(MUL1);
     let v2 = ((v >> 16) & MASK).wrapping_mul(MUL2);
-    let v = (v1.wrapping_add(v2) >> 32) as u32;
-    v as u64
+    ((v1.wrapping_add(v2) >> 32) as u32) as u64
 }
 
 #[inline]
@@ -100,13 +99,11 @@ fn parse_scientific(s: &mut AsciiStr<'_>) -> i64 {
     // the first character is 'e'/'E' and scientific mode is enabled
     let start = *s;
     s.step();
-    let mut exp_num = 0i64;
+    let mut exp_num = 0_i64;
     let mut neg_exp = false;
-    if !s.is_empty() {
-        if s.first_either(b'-', b'+') {
-            neg_exp = s.first_is(b'-');
-            s.step();
-        }
+    if !s.is_empty() && s.first_either(b'-', b'+') {
+        neg_exp = s.first_is(b'-');
+        s.step();
     }
     if s.check_first_digit() {
         s.parse_digits(|digit| {
@@ -141,14 +138,14 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     }
 
     // parse initial digits before dot
-    let mut mantissa = 0u64;
+    let mut mantissa = 0_u64;
     let digits_start = s;
     try_parse_digits(&mut s, &mut mantissa);
     let mut n_digits = s.offset_from(&digits_start);
 
     // handle dot with the following digits
     let mut n_after_dot = 0;
-    let mut exponent = 0i64;
+    let mut exponent = 0_i64;
     let int_end = s;
     if s.check_first(b'.') {
         s.step();
@@ -165,7 +162,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     }
 
     // handle scientific format
-    let mut exp_number = 0i64;
+    let mut exp_number = 0_i64;
     if s.check_first_either(b'e', b'E') {
         exp_number = parse_scientific(&mut s);
         exponent += exp_number;
@@ -196,7 +193,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     if n_digits > 0 {
         // at this point we have more than 19 significant digits, let's try again
         many_digits = true;
-        mantissa = 0u64;
+        mantissa = 0;
         let mut s = digits_start;
         try_parse_19digits(&mut s, &mut mantissa);
         exponent = if mantissa >= MIN_19DIGIT_INT {
