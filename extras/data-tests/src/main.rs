@@ -30,10 +30,10 @@ impl TestCase {
             dbg!(self);
             eprintln!("Failed to parse as f32: {:?}", self.string);
         }
-        let (value, rest) = r.unwrap();
-        if !rest.is_empty() || value != expected {
-            if !rest.is_empty() {
-                eprintln!("Expected empty string remainder, got: {:?}", rest);
+        let (value, len) = r.unwrap();
+        if len != s.len() || value != expected {
+            if len != s.len() {
+                eprintln!("Expected empty string remainder, got: {:?}", s.len() - len);
             }
             if value != expected {
                 eprintln!("Expected output {}, got {}", expected, value);
