@@ -174,40 +174,54 @@ pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
         }
     }
 
+    let len = s.offset_from(&start) as _;
+
     // handle uncommon case with many digits
-    let mut many_digits = false;
     n_digits -= 19;
-    if n_digits > 0 {
-        let mut p = digits_start;
-        while p.check_first_either(b'0', b'.') {
-            n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
-            p.step();
-        }
-        if n_digits > 0 {
-            // at this point we have more than 19 significant digits, let's try again
-            many_digits = true;
-            mantissa = 0u64;
-            let mut s = digits_start;
-            try_parse_19digits(&mut s, &mut mantissa);
-            exponent = if mantissa >= MIN_19DIGIT_INT {
-                int_end.offset_from(&s) // big int
-            } else {
-                s.step(); // fractional component, skip the '.'
-                let before = s;
-                try_parse_19digits(&mut s, &mut mantissa);
-                -s.offset_from(&before)
-            } as i64;
-            exponent += exp_number; // add back the explicit part
-        }
+    if n_digits <= 0 {
+        return Some((
+            Number {
+                exponent,
+                mantissa,
+                negative,
+                many_digits: false,
+            },
+            len,
+        ));
     }
 
-    let number = Number {
-        exponent,
-        mantissa,
-        negative,
-        many_digits,
-    };
-    Some((number, s.offset_from(&start) as usize))
+    let mut many_digits = false;
+    let mut p = digits_start;
+    while p.check_first_either(b'0', b'.') {
+        n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
+        p.step();
+    }
+    if n_digits > 0 {
+        // at this point we have more than 19 significant digits, let's try again
+        many_digits = true;
+        mantissa = 0u64;
+        let mut s = digits_start;
+        try_parse_19digits(&mut s, &mut mantissa);
+        exponent = if mantissa >= MIN_19DIGIT_INT {
+            int_end.offset_from(&s) // big int
+        } else {
+            s.step(); // fractional component, skip the '.'
+            let before = s;
+            try_parse_19digits(&mut s, &mut mantissa);
+            -s.offset_from(&before)
+        } as i64;
+        exponent += exp_number; // add back the explicit part
+    }
+
+    Some((
+        Number {
+            exponent,
+            mantissa,
+            negative,
+            many_digits,
+        },
+        len,
+    ))
 }
 
 #[inline]
