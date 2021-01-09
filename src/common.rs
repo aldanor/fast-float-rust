@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
-use std::ptr;
+use core::marker::PhantomData;
+use core::ptr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AsciiStr<'a> {
@@ -14,7 +14,7 @@ impl<'a> AsciiStr<'a> {
         Self {
             ptr: s.as_ptr(),
             end: unsafe { s.as_ptr().add(s.len()) },
-            _marker: Default::default(),
+            _marker: PhantomData::default(),
         }
     }
 
@@ -90,7 +90,7 @@ impl<'a> AsciiStr<'a> {
     #[inline]
     pub fn read_u64(&self) -> u64 {
         debug_assert!(self.check_len(8));
-        let mut value = 0u64;
+        let mut value = 0_u64;
         let src = self.ptr;
         let dst = &mut value as *mut _ as *mut u8;
         unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
@@ -139,15 +139,6 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
     }
 
     #[inline]
-    fn skip_spaces(&self) -> &[u8] {
-        let mut s = self.as_ref();
-        while !s.is_empty() && is_space(s.get_first()) {
-            s = s.advance(1);
-        }
-        s
-    }
-
-    #[inline]
     fn skip_chars(&self, c: u8) -> &[u8] {
         let mut s = self.as_ref();
         while s.check_first(c) {
@@ -168,7 +159,7 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
     #[inline]
     fn read_u64(&self) -> u64 {
         debug_assert!(self.as_ref().len() >= 8);
-        let mut value = 0u64;
+        let mut value = 0_u64;
         let src = self.as_ref().as_ptr();
         let dst = &mut value as *mut _ as *mut u8;
         unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
@@ -187,20 +178,10 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
 impl ByteSlice for [u8] {}
 
 #[inline]
-fn is_space(c: u8) -> bool {
-    const TABLE: [bool; 33] = [
-        false, false, false, false, false, false, false, false, false, true, true, true, true,
-        true, false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, true,
-    ];
-    (c <= 32) && unsafe { *TABLE.get_unchecked(c as usize) }
-}
-
-#[inline]
 pub fn is_8digits_le(v: u64) -> bool {
-    let a = v.wrapping_add(0x4646464646464646);
-    let b = v.wrapping_sub(0x3030303030303030);
-    (a | b) & 0x8080808080808080 == 0
+    let a = v.wrapping_add(0x4646_4646_4646_4646);
+    let b = v.wrapping_sub(0x3030_3030_3030_3030);
+    (a | b) & 0x8080_8080_8080_8080 == 0
 }
 
 #[inline]

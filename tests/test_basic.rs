@@ -13,11 +13,9 @@ macro_rules! check {
         check!($ty, $s, <$ty>::NEG_INFINITY)
     }};
     ($ty:ty, $s:expr, $e:expr) => {{
-        // eprintln!("\n\nCHECKING: {:?}", $s);
         let s = $s.as_bytes();
-        let (result, n) = fast_float::parse_float::<$ty>(s).unwrap();
-        assert_eq!(n, s.len());
         let expected: $ty = $e;
+        let result = fast_float::parse::<$ty, _>(s).unwrap();
         assert_eq!(result, expected);
         let lex = lexical_core::parse::<$ty>(s).unwrap();
         assert_eq!(result, lex);
@@ -375,7 +373,7 @@ fn test_f64_pow10() {
     for i in -308..=308 {
         let s = format!("1e{}", i);
         let v = f64::from_str(&s).unwrap();
-        assert_eq!(fast_float::parse_float::<f64>(s.as_bytes()).unwrap().0, v);
+        assert_eq!(fast_float::parse::<f64, _>(s).unwrap(), v);
     }
 }
 
@@ -384,6 +382,6 @@ fn test_f32_pow10() {
     for i in -38..=38 {
         let s = format!("1e{}", i);
         let v = f32::from_str(&s).unwrap();
-        assert_eq!(fast_float::parse_float::<f32>(s.as_bytes()).unwrap().0, v);
+        assert_eq!(fast_float::parse::<f32, _>(s).unwrap(), v);
     }
 }

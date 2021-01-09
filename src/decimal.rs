@@ -11,7 +11,7 @@ pub struct Decimal {
 
 impl Default for Decimal {
     fn default() -> Self {
-        Decimal {
+        Self {
             num_digits: 0,
             decimal_point: 0,
             negative: false,
@@ -25,12 +25,6 @@ impl Decimal {
     pub const MAX_DIGITS: usize = 768;
     pub const MAX_DIGITS_WITHOUT_OVERFLOW: usize = 19;
     pub const DECIMAL_POINT_RANGE: i32 = 2047;
-
-    #[inline]
-    pub fn parse(s: &[u8]) -> Self {
-        // can't fail since it follows a call to Number::parse()
-        parse_decimal(s)
-    }
 
     #[inline]
     pub fn try_add_digit(&mut self, digit: u8) {
@@ -55,9 +49,9 @@ impl Decimal {
             return u64::MAX;
         }
         let dp = self.decimal_point as usize;
-        let mut n = 0u64;
+        let mut n = 0_u64;
         for i in 0..dp {
-            n = 10 * n;
+            n *= 10;
             if i < self.num_digits {
                 n += self.digits[i] as u64;
             }
@@ -83,7 +77,7 @@ impl Decimal {
         let num_new_digits = number_of_digits_decimal_left_shift(self, shift);
         let mut read_index = self.num_digits;
         let mut write_index = self.num_digits + num_new_digits;
-        let mut n = 0u64;
+        let mut n = 0_u64;
         while read_index != 0 {
             read_index -= 1;
             write_index -= 1;
@@ -120,7 +114,7 @@ impl Decimal {
     pub fn right_shift(&mut self, shift: usize) {
         let mut read_index = 0;
         let mut write_index = 0;
-        let mut n = 0u64;
+        let mut n = 0_u64;
         while (n >> shift) == 0 {
             if read_index < self.num_digits {
                 n = (10 * n) + self.digits[read_index] as u64;
@@ -129,7 +123,7 @@ impl Decimal {
                 return;
             } else {
                 while (n >> shift) == 0 {
-                    n = 10 * n;
+                    n *= 10;
                     read_index += 1;
                 }
                 break;
@@ -143,7 +137,7 @@ impl Decimal {
             self.truncated = false;
             return;
         }
-        let mask = (1u64 << shift) - 1;
+        let mask = (1_u64 << shift) - 1;
         while read_index < self.num_digits {
             let new_digit = (n >> shift) as u8;
             n = (10 * (n & mask)) + self.digits[read_index] as u64;
@@ -167,7 +161,7 @@ impl Decimal {
 }
 
 #[inline]
-fn parse_decimal(mut s: &[u8]) -> Decimal {
+pub fn parse_decimal(mut s: &[u8]) -> Decimal {
     // can't fail since it follows a call to parse_number
     let mut d = Decimal::default();
     let c = s.get_first();
@@ -189,7 +183,7 @@ fn parse_decimal(mut s: &[u8]) -> Decimal {
                 if !is_8digits_le(v) {
                     break;
                 }
-                d.digits[d.num_digits..].write_u64(v - 0x3030303030303030);
+                d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
                 d.num_digits += 8;
                 s = s.advance(8);
             }
@@ -206,7 +200,7 @@ fn parse_decimal(mut s: &[u8]) -> Decimal {
         } else if s.check_first(b'+') {
             s = s.advance(1);
         }
-        let mut exp_num = 0i32;
+        let mut exp_num = 0_i32;
         parse_digits(&mut s, |digit| {
             if exp_num < 0x10000 {
                 exp_num = 10 * exp_num + digit as i32;
@@ -289,12 +283,12 @@ fn number_of_digits_decimal_left_shift(d: &Decimal, mut shift: usize) -> usize {
     let pow5_a = (0x7FF & x_a) as usize;
     let pow5_b = (0x7FF & x_b) as usize;
     let pow5 = &TABLE_POW5[pow5_a..];
-    for i in 0..(pow5_b - pow5_a) {
+    for (i, &p5) in pow5.iter().enumerate().take(pow5_b - pow5_a) {
         if i >= d.num_digits {
             return num_new_digits - 1;
-        } else if d.digits[i] == pow5[i] {
+        } else if d.digits[i] == p5 {
             continue;
-        } else if d.digits[i] < pow5[i] {
+        } else if d.digits[i] < p5 {
             return num_new_digits - 1;
         } else {
             return num_new_digits;

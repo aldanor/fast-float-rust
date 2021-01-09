@@ -22,18 +22,19 @@ impl TestCase {
         }
     }
 
-    fn execute_one<F: fast_float::Float>(&self, expected: F) {
-        let s = self.string.as_bytes();
-
-        let r = fast_float::parse_float::<F>(s);
-        if !r.is_some() {
+    fn execute_one<F: fast_float::FastFloat>(&self, expected: F) {
+        let r = F::parse_float_partial(&self.string);
+        if !r.is_ok() {
             dbg!(self);
             eprintln!("Failed to parse as f32: {:?}", self.string);
         }
         let (value, len) = r.unwrap();
-        if len != s.len() || value != expected {
-            if len != s.len() {
-                eprintln!("Expected empty string remainder, got: {:?}", s.len() - len);
+        if len != self.string.len() || value != expected {
+            if len != self.string.len() {
+                eprintln!(
+                    "Expected empty string remainder, got: {:?}",
+                    self.string.len() - len
+                );
             }
             if value != expected {
                 eprintln!("Expected output {}, got {}", expected, value);

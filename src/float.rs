@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display};
-use std::ops::{Add, Div, Mul, Neg};
+use core::fmt::{Debug, Display};
+use core::ops::{Add, Div, Mul, Neg};
 
 mod private {
     pub trait Sealed {}
@@ -37,7 +37,7 @@ pub trait Float:
     const SMALLEST_POWER_OF_TEN: i32;
     const LARGEST_POWER_OF_TEN: i32;
 
-    const MAX_MANTISSA_FAST_PATH: u64 = 2u64 << Self::MANTISSA_EXPLICIT_BITS;
+    const MAX_MANTISSA_FAST_PATH: u64 = 2_u64 << Self::MANTISSA_EXPLICIT_BITS;
 
     fn from_u64(v: u64) -> Self;
     fn pow10_fast_path(exponent: usize) -> Self;
@@ -46,10 +46,10 @@ pub trait Float:
 impl private::Sealed for f32 {}
 
 impl Float for f32 {
-    const INFINITY: Self = f32::INFINITY;
-    const NEG_INFINITY: Self = f32::NEG_INFINITY;
-    const NAN: Self = f32::NAN;
-    const NEG_NAN: Self = -f32::NAN;
+    const INFINITY: Self = Self::INFINITY;
+    const NEG_INFINITY: Self = Self::NEG_INFINITY;
+    const NAN: Self = Self::NAN;
+    const NEG_NAN: Self = -Self::NAN;
 
     const MANTISSA_EXPLICIT_BITS: usize = 23;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
@@ -68,6 +68,7 @@ impl Float for f32 {
     }
 
     #[inline]
+    #[allow(clippy::use_self)]
     fn pow10_fast_path(exponent: usize) -> Self {
         const TABLE: [f32; 11] = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10];
         unsafe { *TABLE.get_unchecked(exponent) }
@@ -77,10 +78,10 @@ impl Float for f32 {
 impl private::Sealed for f64 {}
 
 impl Float for f64 {
-    const INFINITY: Self = f64::INFINITY;
-    const NEG_INFINITY: Self = f64::NEG_INFINITY;
-    const NAN: Self = f64::NAN;
-    const NEG_NAN: Self = -f64::NAN;
+    const INFINITY: Self = Self::INFINITY;
+    const NEG_INFINITY: Self = Self::NEG_INFINITY;
+    const NAN: Self = Self::NAN;
+    const NEG_NAN: Self = -Self::NAN;
 
     const MANTISSA_EXPLICIT_BITS: usize = 52;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -4;
@@ -100,6 +101,7 @@ impl Float for f64 {
 
     #[inline]
     fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
         const TABLE: [f64; 23] = [
             1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
             1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
