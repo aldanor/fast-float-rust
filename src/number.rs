@@ -1,6 +1,5 @@
 use crate::common::{is_8digits_le, AsciiStr, ByteSlice};
 use crate::float::Float;
-use crate::format::FloatFormat;
 
 const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
 
@@ -97,8 +96,8 @@ fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
 }
 
 #[inline]
-fn parse_scientific(s: &mut AsciiStr<'_>, exponent: &mut i64, fixed: bool) -> Option<()> {
-    // the first character is 'e' and scientific mode is enabled
+fn parse_scientific(s: &mut AsciiStr<'_>) -> i64 {
+    // the first character is 'e'/'E' and scientific mode is enabled
     let start = *s;
     s.step();
     let mut exp_num = 0i64;
@@ -115,17 +114,19 @@ fn parse_scientific(s: &mut AsciiStr<'_>, exponent: &mut i64, fixed: bool) -> Op
                 exp_num = 10 * exp_num + digit as i64; // no overflows here
             }
         });
-        *exponent += if neg_exp { -exp_num } else { exp_num };
-    } else if !fixed {
-        return None; // error: no integers following 'e'
+        if neg_exp {
+            -exp_num
+        } else {
+            exp_num
+        }
     } else {
         *s = start; // ignore 'e' and return back
+        0
     }
-    Some(())
 }
 
 #[inline]
-pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
+pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     // assuming s.len() >= 1
     let mut s = AsciiStr::new(s);
     let start = s;
@@ -165,13 +166,9 @@ pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
 
     // handle scientific format
     let mut exp_number = 0i64;
-    if fmt.scientific {
-        if s.check_first_either(b'e', b'E') {
-            parse_scientific(&mut s, &mut exp_number, fmt.fixed)?;
-            exponent += exp_number;
-        } else if !fmt.fixed {
-            return None; // error: scientific and not fixed
-        }
+    if s.check_first_either(b'e', b'E') {
+        exp_number = parse_scientific(&mut s);
+        exponent += exp_number;
     }
 
     let len = s.offset_from(&start) as _;
