@@ -10,7 +10,7 @@ use fastrand::Rng;
 use lexical::FromLexical;
 use structopt::StructOpt;
 
-use fast_float::Float;
+use fast_float::ParseFloat;
 
 use random::RandomGen;
 
@@ -66,7 +66,7 @@ struct BenchResult {
     pub times: Vec<i64>,
 }
 
-fn run_one_bench<T: Float, F: Fn(&str) -> T>(
+fn run_one_bench<T: ParseFloat, F: Fn(&str) -> T>(
     name: &str,
     inputs: &[String],
     repeat: usize,
@@ -87,15 +87,11 @@ fn run_one_bench<T: Float, F: Fn(&str) -> T>(
     BenchResult { name, times }
 }
 
-fn run_all_benches<T: Float + FromLexical + FromStr>(
+fn run_all_benches<T: ParseFloat + FromLexical + FromStr>(
     inputs: &[String],
     repeat: usize,
 ) -> Vec<BenchResult> {
-    let ff_func = |s: &str| {
-        fast_float::parse_float::<T>(s.as_bytes())
-            .unwrap_or_default()
-            .0
-    };
+    let ff_func = |s: &str| fast_float::parse_partial::<T, _>(s).unwrap_or_default().0;
     let ff_res = run_one_bench("fast_float", inputs, repeat, ff_func);
 
     let lex_func = |s: &str| {

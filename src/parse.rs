@@ -47,8 +47,3 @@ pub fn parse_float_fmt<F: Float>(mut s: &[u8], fmt: FloatFormat) -> Option<(F, u
 
     Some((value, rest))
 }
-
-#[inline]
-pub fn parse_float<F: Float>(s: &[u8]) -> Option<(F, usize)> {
-    parse_float_fmt(s, Default::default())
-}
