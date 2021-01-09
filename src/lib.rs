@@ -54,11 +54,21 @@ pub trait FastFloat: float::Float {
 impl FastFloat for f32 {}
 impl FastFloat for f64 {}
 
+/// Parse a float number from string (full).
+///
+/// This method parses the entire string, returning an error either if the string doesn't
+/// start with a valid float number, or if any characters are left remaining unparsed.
+/// Scientific notation is enabled.
 #[inline]
 pub fn parse<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<T> {
     T::parse_float(s)
 }
 
+/// Parse a float number from string (partial).
+///
+/// This method parses the string greedily while it can and in case of success returns
+/// the parsed number along with the number of characters consumed. Returns an error if
+/// the string doesn't start with a valid float number. Scientific notation is enabled.
 #[inline]
 pub fn parse_partial<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<(T, usize)> {
     T::parse_float_partial(s)
