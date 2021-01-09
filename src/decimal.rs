@@ -27,12 +27,6 @@ impl Decimal {
     pub const DECIMAL_POINT_RANGE: i32 = 2047;
 
     #[inline]
-    pub fn parse(s: &[u8]) -> Self {
-        // can't fail since it follows a call to Number::parse()
-        parse_decimal(s)
-    }
-
-    #[inline]
     pub fn try_add_digit(&mut self, digit: u8) {
         if self.num_digits < Self::MAX_DIGITS {
             self.digits[self.num_digits] = digit;
@@ -167,7 +161,7 @@ impl Decimal {
 }
 
 #[inline]
-fn parse_decimal(mut s: &[u8]) -> Decimal {
+pub fn parse_decimal(mut s: &[u8]) -> Decimal {
     // can't fail since it follows a call to parse_number
     let mut d = Decimal::default();
     let c = s.get_first();

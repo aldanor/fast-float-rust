@@ -1,15 +1,11 @@
 use crate::common::AdjustedMantissa;
-use crate::decimal::Decimal;
+use crate::decimal::{parse_decimal, Decimal};
 use crate::float::Float;
 
 #[inline]
 pub fn parse_long_mantissa<F: Float>(s: &[u8]) -> AdjustedMantissa {
-    let mut d = Decimal::parse(s);
-    compute_float_from_decimal::<F>(&mut d)
-}
+    let mut d = parse_decimal(s);
 
-#[inline]
-pub fn compute_float_from_decimal<F: Float>(d: &mut Decimal) -> AdjustedMantissa {
     let am_zero = AdjustedMantissa::zero_pow2(0);
     let am_inf = AdjustedMantissa::zero_pow2(F::INFINITE_POWER);
 
