@@ -2,11 +2,14 @@ use crate::common::{is_8digits_le, AsciiStr, ByteSlice};
 use crate::float::Float;
 use crate::format::FloatFormat;
 
+const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Number {
     pub exponent: i64,
     pub mantissa: u64,
     pub negative: bool,
+    pub many_digits: bool,
 }
 
 impl Number {
@@ -15,6 +18,7 @@ impl Number {
         F::MIN_EXPONENT_FAST_PATH <= self.exponent
             && self.exponent <= F::MAX_EXPONENT_FAST_PATH
             && self.mantissa <= F::MAX_MANTISSA_FAST_PATH
+            && !self.many_digits
     }
 
     #[inline]
@@ -54,6 +58,15 @@ fn try_parse_digits(s: &mut AsciiStr<'_>, x: &mut u64) {
     s.parse_digits(|digit| {
         *x = x.wrapping_mul(10).wrapping_add(digit as _); // overflows to be handled later
     });
+}
+
+#[inline]
+fn try_parse_19digits(s: &mut AsciiStr<'_>, x: &mut u64) {
+    while *x < MIN_19DIGIT_INT && !s.is_empty() && s.first().is_ascii_digit() {
+        let digit = s.first() - b'0';
+        *x = (*x * 10) + digit as u64; // no overflows here
+        s.step();
+    }
 }
 
 #[inline]
@@ -135,6 +148,7 @@ pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
     // handle dot with the following digits
     let mut n_after_dot = 0;
     let mut exponent = 0i64;
+    let int_end = s;
     if s.check_first(b'.') {
         s.step();
         let before = s;
@@ -150,33 +164,64 @@ pub fn parse_number(s: &[u8], fmt: FloatFormat) -> Option<(Number, usize)> {
     }
 
     // handle scientific format
+    let mut exp_number = 0i64;
     if fmt.scientific {
         if s.check_first_either(b'e', b'E') {
-            parse_scientific(&mut s, &mut exponent, fmt.fixed)?;
+            parse_scientific(&mut s, &mut exp_number, fmt.fixed)?;
+            exponent += exp_number;
         } else if !fmt.fixed {
             return None; // error: scientific and not fixed
         }
     }
 
+    let len = s.offset_from(&start) as _;
+
     // handle uncommon case with many digits
     n_digits -= 19;
-    if n_digits > 0 {
-        let mut p = digits_start;
-        while p.check_first_either(b'0', b'.') {
-            n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
-            p.step();
-        }
-        if n_digits > 0 {
-            mantissa = u64::MAX;
-        }
+    if n_digits <= 0 {
+        return Some((
+            Number {
+                exponent,
+                mantissa,
+                negative,
+                many_digits: false,
+            },
+            len,
+        ));
     }
 
-    let number = Number {
-        exponent,
-        mantissa,
-        negative,
-    };
-    Some((number, s.offset_from(&start) as usize))
+    let mut many_digits = false;
+    let mut p = digits_start;
+    while p.check_first_either(b'0', b'.') {
+        n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
+        p.step();
+    }
+    if n_digits > 0 {
+        // at this point we have more than 19 significant digits, let's try again
+        many_digits = true;
+        mantissa = 0u64;
+        let mut s = digits_start;
+        try_parse_19digits(&mut s, &mut mantissa);
+        exponent = if mantissa >= MIN_19DIGIT_INT {
+            int_end.offset_from(&s) // big int
+        } else {
+            s.step(); // fractional component, skip the '.'
+            let before = s;
+            try_parse_19digits(&mut s, &mut mantissa);
+            -s.offset_from(&before)
+        } as i64;
+        exponent += exp_number; // add back the explicit part
+    }
+
+    Some((
+        Number {
+            exponent,
+            mantissa,
+            negative,
+            many_digits,
+        },
+        len,
+    ))
 }
 
 #[inline]

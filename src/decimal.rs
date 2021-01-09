@@ -33,51 +33,6 @@ impl Decimal {
     }
 
     #[inline]
-    pub fn to_truncated_mantissa(&self) -> u64 {
-        let mut mantissa = 0;
-        if cfg!(target_endian = "big") {
-            for i in 0..Self::MAX_DIGITS_WITHOUT_OVERFLOW {
-                mantissa = mantissa * 10 + self.digits[i] as u64;
-            }
-        } else {
-            let mut val = self.digits.read_u64();
-            val = val.wrapping_mul(2561) >> 8;
-            val = (val & 0x00FF00FF00FF00FF).wrapping_mul(6553601) >> 16;
-            mantissa =
-                (((val & 0x0000FFFF0000FFFF).wrapping_mul(42949672960001) >> 32) as u32) as u64;
-            let mut val = self.digits[8..].read_u64();
-            val = val.wrapping_mul(2561) >> 8;
-            val = (val & 0x00FF00FF00FF00FF).wrapping_mul(6553601) >> 16;
-            let eight_digits_value =
-                (((val & 0x0000FFFF0000FFFF).wrapping_mul(42949672960001) >> 32) as u32) as u64;
-            mantissa = 100000000 * mantissa + eight_digits_value;
-            for i in 16..Self::MAX_DIGITS_WITHOUT_OVERFLOW {
-                mantissa = mantissa * 10 + self.digits[i] as u64;
-            }
-            if false {
-                let mut val = self.digits.read_u64();
-                val = val * 2561 >> 8;
-                val = (val & 0x00FF00FF00FF00FF) * 6553601 >> 16;
-                mantissa = (val & 0x0000FFFF0000FFFF) * 42949672960001 >> 32;
-                let mut val = self.digits[8..].read_u64();
-                val = val * 2561 >> 8;
-                val = (val & 0x00FF00FF00FF00FF) * 6553601 >> 16;
-                let eight_digits_value = (val & 0x0000FFFF0000FFFF) * 42949672960001 >> 32;
-                mantissa = 100000000 * mantissa + eight_digits_value;
-                for i in 16..Self::MAX_DIGITS_WITHOUT_OVERFLOW {
-                    mantissa = mantissa * 10 + self.digits[i] as u64;
-                }
-            }
-        }
-        mantissa
-    }
-
-    #[inline]
-    pub fn to_truncated_exponent(&self) -> i32 {
-        self.decimal_point - Self::MAX_DIGITS_WITHOUT_OVERFLOW as i32
-    }
-
-    #[inline]
     pub fn try_add_digit(&mut self, digit: u8) {
         if self.num_digits < Self::MAX_DIGITS {
             self.digits[self.num_digits] = digit;

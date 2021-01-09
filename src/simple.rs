@@ -1,4 +1,3 @@
-use crate::binary::compute_float_from_exp_mantissa;
 use crate::common::AdjustedMantissa;
 use crate::decimal::Decimal;
 use crate::float::Float;
@@ -6,15 +5,7 @@ use crate::float::Float;
 #[inline]
 pub fn parse_long_mantissa<F: Float>(s: &[u8]) -> AdjustedMantissa {
     let mut d = Decimal::parse(s);
-    let mantissa = d.to_truncated_mantissa();
-    let exponent = d.to_truncated_exponent() as i64;
-    let am1 = compute_float_from_exp_mantissa::<F>(exponent, mantissa);
-    let am2 = compute_float_from_exp_mantissa::<F>(exponent, mantissa + 1);
-    if am1 == am2 && am1.power2 >= 0 {
-        am1
-    } else {
-        compute_float_from_decimal::<F>(&mut d)
-    }
+    compute_float_from_decimal::<F>(&mut d)
 }
 
 #[inline]
