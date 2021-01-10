@@ -1,6 +1,8 @@
+use core::fmt::{self, Debug};
+
 use crate::common::{is_8digits_le, parse_digits, ByteSlice};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Decimal {
     pub num_digits: usize,
     pub decimal_point: i32,
@@ -8,6 +10,30 @@ pub struct Decimal {
     pub truncated: bool,
     pub digits: [u8; Self::MAX_DIGITS],
 }
+
+impl Debug for Decimal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Decimal")
+            .field("num_digits", &self.num_digits)
+            .field("decimal_point", &self.decimal_point)
+            .field("negative", &self.negative)
+            .field("truncated", &self.truncated)
+            .field("digits", &(&self.digits[..self.num_digits]))
+            .finish()
+    }
+}
+
+impl PartialEq for Decimal {
+    fn eq(&self, other: &Self) -> bool {
+        self.num_digits == other.num_digits
+            && self.decimal_point == other.decimal_point
+            && self.negative == other.negative
+            && self.truncated == other.truncated
+            && &self.digits[..] == &other.digits[..]
+    }
+}
+
+impl Eq for Decimal {}
 
 impl Default for Decimal {
     fn default() -> Self {
