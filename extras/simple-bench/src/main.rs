@@ -27,6 +27,9 @@ struct Opt {
     /// How many times to repeat parsing
     #[structopt(short, default_value = "1000")]
     repeat: usize,
+    /// Only run fast-float benches
+    #[structopt(short)]
+    only_fast_float: bool,
     #[structopt(subcommand)]
     command: Cmd,
 }
@@ -90,28 +93,31 @@ fn run_one_bench<T: FastFloat, F: Fn(&str) -> T>(
 fn run_all_benches<T: FastFloat + FromLexical + FromLexicalLossy + FromStr>(
     inputs: &[String],
     repeat: usize,
+    only_fast_float: bool,
 ) -> Vec<BenchResult> {
     let ff_func = |s: &str| fast_float::parse_partial::<T, _>(s).unwrap_or_default().0;
-    let ff_res = run_one_bench("fast_float", inputs, repeat, ff_func);
+    let mut out = vec![run_one_bench("fast_float", inputs, repeat, ff_func)];
 
-    let lex_func = |s: &str| {
-        lexical_core::parse_partial::<T>(s.as_bytes())
-            .unwrap_or_default()
-            .0
+    if !only_fast_float {
+        let lex_func = |s: &str| {
+            lexical_core::parse_partial::<T>(s.as_bytes())
+                .unwrap_or_default()
+                .0
+        };
+        out.push(run_one_bench("lexical", inputs, repeat, lex_func));
+
+        let lexl_func = |s: &str| {
+            lexical_core::parse_partial_lossy::<T>(s.as_bytes())
+                .unwrap_or_default()
+                .0
+        };
+        out.push(run_one_bench("lexical/lossy", inputs, repeat, lexl_func));
+
+        let std_func = |s: &str| s.parse::<T>().unwrap_or_default();
+        out.push(run_one_bench("from_str", inputs, repeat, std_func));
     };
-    let lex_res = run_one_bench("lexical", inputs, repeat, lex_func);
 
-    let lexl_func = |s: &str| {
-        lexical_core::parse_partial_lossy::<T>(s.as_bytes())
-            .unwrap_or_default()
-            .0
-    };
-    let lexl_res = run_one_bench("lexical/lossy", inputs, repeat, lexl_func);
-
-    let std_func = |s: &str| s.parse::<T>().unwrap_or_default();
-    let std_res = run_one_bench("from_str", inputs, repeat, std_func);
-
-    vec![ff_res, lex_res, lexl_res, std_res]
+    out
 }
 
 fn print_report(inputs: &[String], results: &[BenchResult], inputs_name: &str, ty: &str) {
@@ -194,9 +200,15 @@ fn main() {
     };
     let repeat = opt.repeat.max(1);
     let (results, ty) = if opt.float32 {
-        (run_all_benches::<f32>(&inputs, repeat), "f32")
+        (
+            run_all_benches::<f32>(&inputs, repeat, opt.only_fast_float),
+            "f32",
+        )
     } else {
-        (run_all_benches::<f64>(&inputs, repeat), "f64")
+        (
+            run_all_benches::<f64>(&inputs, repeat, opt.only_fast_float),
+            "f64",
+        )
     };
     print_report(&inputs, &results, &inputs_name, ty);
 }
