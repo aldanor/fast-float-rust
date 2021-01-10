@@ -1,0 +1,22 @@
+[package]
+name = "fast-float-fuzz"
+version = "0.1.0"
+authors = ["Ivan Smirnov <i.s.smirnov@gmail.com>"]
+edition = "2018"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+fast-float = { path = ".." }
+libfuzzer-sys = "0.3"
+
+[[bin]]
+name = "fast_float"
+path = "fuzz_targets/fast_float.rs"
+test = false
+doc = false
