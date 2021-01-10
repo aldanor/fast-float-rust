@@ -58,7 +58,7 @@ the performance level it's at now), with some Rust-specific tweaks. Please see t
 repository for many useful details regarding the algorithm and the implementation.
 
 The parser is locale-independent. The resulting value is the closest floating-point values (using either 
-`f32` or `f64), using the "round to even" convention for values that would otherwise fall right in-between 
+`f32` or `f64`), using the "round to even" convention for values that would otherwise fall right in-between 
 two values. That is, we provide exact parsing according to the IEEE standard. 
 
 Infinity and NaN values can be parsed, along with scientific notation.
