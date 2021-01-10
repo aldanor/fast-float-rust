@@ -20,6 +20,7 @@ std = []
 [dev-dependencies]
 lexical-core = "0.7"
 hexf-parse = "0.1"
+ryu = "1.0"
 
 [workspace]
 members = [".", "extras/data-tests", "extras/simple-bench"]
