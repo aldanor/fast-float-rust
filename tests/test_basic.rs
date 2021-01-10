@@ -11,7 +11,7 @@ fn hexf64(s: &str) -> f64 {
 }
 
 macro_rules! check {
-    ($ty:ty, $s:expr) => {{
+    ($ty:ident, $s:expr) => {{
         check!($ty, stringify!($s), $s)
     }};
     ($ty:ident, $s:expr, inf) => {{
@@ -20,7 +20,7 @@ macro_rules! check {
     ($ty:ident, $s:expr, neg_inf) => {{
         check!($ty, $s, core::$ty::NEG_INFINITY)
     }};
-    ($ty:ty, $s:expr, $e:expr) => {{
+    ($ty:ident, $s:expr, $e:expr) => {{
         let s = $s.as_bytes();
         let expected: $ty = $e;
         let result = fast_float::parse::<$ty, _>(s).unwrap();
@@ -38,7 +38,7 @@ macro_rules! check {
     }};
 }
 macro_rules! check_lex {
-    ($ty: ty, $s: expr) => {{
+    ($ty:ident, $s:expr) => {{
         let v = lexical_core::parse::<$ty>($s.as_bytes()).unwrap();
         check!($ty, $s, v);
     }};
@@ -54,12 +54,12 @@ macro_rules! check_f64 {
     }
 }
 macro_rules! check_f32_lex {
-    ($s: expr) => {
+    ($s:expr) => {
         check_lex!(f32, $s)
     };
 }
 macro_rules! check_f64_lex {
-    ($s: expr) => {
+    ($s:expr) => {
         check_lex!(f64, $s)
     };
 }
