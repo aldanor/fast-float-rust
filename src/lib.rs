@@ -1,3 +1,36 @@
+//! This crate provides a super-fast decimal number parser from strings into floats.
+//!
+//! ## Usage
+//!
+//! There's two top-level functions provided: [`parse`](crate::parse()) and
+//! [`parse_partial`](crate::parse_partial()), both taking
+//! either a string or a bytes slice and parsing the input into either `f32` or `f64`:
+//!
+//! - [`parse`](crate::parse()) treats the whole string as a decimal number and returns an
+//!   error if there are invalid characters or if the string is empty.
+//! - [`parse_partial`](crate::parse_partial()) tries to find the longest substring at the
+//! beginning of the given input string that can be parsed as a decimal number and,
+//! in the case of success, returns the parsed value along the number of characters processed;
+//! an error is returned if the string doesn't start with a decimal number or if it is empty.
+//! This function is most useful as a building block when constructing more complex parsers,
+//! or when parsing streams of data.
+//!
+//! ## Examples
+//!
+//! ```rust
+//! // Parse the entire string as a decimal number.
+//! let s = "1.23e-02";
+//! let x: f32 = fast_float::parse(s).unwrap();
+//! assert_eq!(x, 0.0123);
+//!
+//! // Parse as many characters as possible as a decimal number.
+//! let s = "1.23e-02foo";
+//! let (x, n) = fast_float::parse_partial::<f32, _>(s).unwrap();
+//! assert_eq!(x, 0.0123);
+//! assert_eq!(n, 8);
+//! assert_eq!(&s[n..], "foo");
+//! ```
+
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 #![allow(
     clippy::cast_possible_truncation,
@@ -43,13 +76,11 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 /// Trait for numerical float types that can be parsed from string.
 pub trait FastFloat: float::Float {
-    /// Parse a float number from string (full).
-    ///
-    /// This method parses the float number from the entire string.
+    /// Parse a decimal number from string into float (full).
     ///
     /// # Errors
     ///
-    /// Will return an error either if the string doesn't start with a valid float number,
+    /// Will return an error either if the string is not a valid decimal number.
     /// or if any characterse are left remaining unparsed.
     #[inline]
     fn parse_float<S: AsRef<[u8]>>(s: S) -> Result<Self> {
@@ -60,15 +91,14 @@ pub trait FastFloat: float::Float {
         }
     }
 
-    /// Parse a float number from string (partial).
+    /// Parse a decimal number from string into float (partial).
     ///
-    /// This method parses as many digits possible and returns the resulting number along
-    /// with the number of digits processed (in case of success, this number is always
-    /// positive).
+    /// This method parses as many characters as possible and returns the resulting number along
+    /// with the number of digits processed (in case of success, this number is always positive).
     ///
     /// # Errors
     ///
-    /// Will return an error either if the string doesn't start with a valid float number
+    /// Will return an error either if the string doesn't start with a valid decimal number
     /// – that is, if no zero digits were processed.
     #[inline]
     fn parse_float_partial<S: AsRef<[u8]>>(s: S) -> Result<(Self, usize)> {
@@ -79,28 +109,25 @@ pub trait FastFloat: float::Float {
 impl FastFloat for f32 {}
 impl FastFloat for f64 {}
 
-/// Parse a float number from string (full).
-///
-/// This function parses the float number from the entire string.
+/// Parse a decimal number from string into float (full).
 ///
 /// # Errors
 ///
-/// Will return an error either if the string doesn't start with a valid float number,
+/// Will return an error either if the string is not a valid decimal number
 /// or if any characterse are left remaining unparsed.
 #[inline]
 pub fn parse<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<T> {
     T::parse_float(s)
 }
 
-/// Parse a float number from string (partial).
+/// Parse a decimal number from string into float (partial).
 ///
-/// This function parses as many digits possible and returns the resulting number along
-/// with the number of digits processed (in case of success, this number is always
-/// positive).
+/// This function parses as many characters as possible and returns the resulting number along
+/// with the number of digits processed (in case of success, this number is always positive).
 ///
 /// # Errors
 ///
-/// Will return an error either if the string doesn't start with a valid float number
+/// Will return an error either if the string doesn't start with a valid decimal number
 /// – that is, if no zero digits were processed.
 #[inline]
 pub fn parse_partial<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<(T, usize)> {

@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Instant;
 
 use fastrand::Rng;
-use lexical::FromLexical;
+use lexical::{FromLexical, FromLexicalLossy};
 use structopt::StructOpt;
 
 use fast_float::FastFloat;
@@ -87,7 +87,7 @@ fn run_one_bench<T: FastFloat, F: Fn(&str) -> T>(
     BenchResult { name, times }
 }
 
-fn run_all_benches<T: FastFloat + FromLexical + FromStr>(
+fn run_all_benches<T: FastFloat + FromLexical + FromLexicalLossy + FromStr>(
     inputs: &[String],
     repeat: usize,
 ) -> Vec<BenchResult> {
@@ -99,12 +99,19 @@ fn run_all_benches<T: FastFloat + FromLexical + FromStr>(
             .unwrap_or_default()
             .0
     };
-    let lex_res = run_one_bench("lexical_core", inputs, repeat, lex_func);
+    let lex_res = run_one_bench("lexical", inputs, repeat, lex_func);
+
+    let lexl_func = |s: &str| {
+        lexical_core::parse_partial_lossy::<T>(s.as_bytes())
+            .unwrap_or_default()
+            .0
+    };
+    let lexl_res = run_one_bench("lexical/lossy", inputs, repeat, lexl_func);
 
     let std_func = |s: &str| s.parse::<T>().unwrap_or_default();
     let std_res = run_one_bench("from_str", inputs, repeat, std_func);
 
-    vec![ff_res, lex_res, std_res]
+    vec![ff_res, lex_res, lexl_res, std_res]
 }
 
 fn print_report(inputs: &[String], results: &[BenchResult], inputs_name: &str, ty: &str) {
