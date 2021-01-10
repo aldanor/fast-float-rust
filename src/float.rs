@@ -70,8 +70,20 @@ impl Float for f32 {
     #[inline]
     #[allow(clippy::use_self)]
     fn pow10_fast_path(exponent: usize) -> Self {
-        const TABLE: [f32; 11] = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10];
-        unsafe { *TABLE.get_unchecked(exponent) }
+        match exponent {
+            0 => 1e0,
+            1 => 1e1,
+            2 => 1e2,
+            3 => 1e3,
+            4 => 1e4,
+            5 => 1e5,
+            6 => 1e6,
+            7 => 1e7,
+            8 => 1e8,
+            9 => 1e9,
+            10 => 1e10,
+            _ => unreachable!(),
+        }
     }
 }
 
