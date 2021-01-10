@@ -46,10 +46,10 @@ pub trait Float:
 impl private::Sealed for f32 {}
 
 impl Float for f32 {
-    const INFINITY: Self = Self::INFINITY;
-    const NEG_INFINITY: Self = Self::NEG_INFINITY;
-    const NAN: Self = Self::NAN;
-    const NEG_NAN: Self = -Self::NAN;
+    const INFINITY: Self = core::f32::INFINITY;
+    const NEG_INFINITY: Self = core::f32::NEG_INFINITY;
+    const NAN: Self = core::f32::NAN;
+    const NEG_NAN: Self = -core::f32::NAN;
 
     const MANTISSA_EXPLICIT_BITS: usize = 23;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
@@ -78,10 +78,10 @@ impl Float for f32 {
 impl private::Sealed for f64 {}
 
 impl Float for f64 {
-    const INFINITY: Self = Self::INFINITY;
-    const NEG_INFINITY: Self = Self::NEG_INFINITY;
-    const NAN: Self = Self::NAN;
-    const NEG_NAN: Self = -Self::NAN;
+    const INFINITY: Self = core::f64::INFINITY;
+    const NEG_INFINITY: Self = core::f64::NEG_INFINITY;
+    const NAN: Self = core::f64::NAN;
+    const NEG_NAN: Self = -core::f64::NAN;
 
     const MANTISSA_EXPLICIT_BITS: usize = 52;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -4;

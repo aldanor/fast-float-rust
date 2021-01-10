@@ -14,11 +14,11 @@ macro_rules! check {
     ($ty:ty, $s:expr) => {{
         check!($ty, stringify!($s), $s)
     }};
-    ($ty:ty, $s:expr, inf) => {{
-        check!($ty, $s, <$ty>::INFINITY)
+    ($ty:ident, $s:expr, inf) => {{
+        check!($ty, $s, core::$ty::INFINITY)
     }};
-    ($ty:ty, $s:expr, neg_inf) => {{
-        check!($ty, $s, <$ty>::NEG_INFINITY)
+    ($ty:ident, $s:expr, neg_inf) => {{
+        check!($ty, $s, core::$ty::NEG_INFINITY)
     }};
     ($ty:ty, $s:expr, $e:expr) => {{
         let s = $s.as_bytes();

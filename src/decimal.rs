@@ -72,7 +72,7 @@ impl Decimal {
         if self.num_digits == 0 || self.decimal_point < 0 {
             return 0;
         } else if self.decimal_point > 18 {
-            return u64::MAX;
+            return 0xFFFF_FFFF_FFFF_FFFF_u64;
         }
         let dp = self.decimal_point as usize;
         let mut n = 0_u64;
