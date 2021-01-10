@@ -99,7 +99,7 @@ impl<'a> AsciiStr<'a> {
 
     #[inline]
     pub fn offset_from(&self, other: &Self) -> isize {
-        unsafe { self.ptr.offset_from(other.ptr) } // assuming the same end
+        isize::wrapping_sub(self.ptr as _, other.ptr as _) // assuming the same end
     }
 }
 
