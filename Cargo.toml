@@ -21,7 +21,7 @@ std = []
 lexical-core = "0.7"
 criterion = "0.3"
 
-[dev-dependencies.hexf]
+[dev-dependencies.hexf-parse]
 version = "*"
 git = "https://github.com/lifthrasiir/hexf.git" # until the version on crates.io is updated
 rev = "0c95001574997847e1348c4f6dac5f434c772914"
