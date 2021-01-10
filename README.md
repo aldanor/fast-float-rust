@@ -6,7 +6,7 @@ fast-float
 [![Documentation](https://docs.rs/fast-float/badge.svg)](https://docs.rs/fast-float)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Rustc 1.47+](https://img.shields.io/badge/rustc-1.47+-lightgray.svg)](https://blog.rust-lang.org/2020/10/08/Rust-1.47.html)
+[![Rustc 1.37+](https://img.shields.io/badge/rustc-1.37+-lightgray.svg)](https://blog.rust-lang.org/2019/08/15/Rust-1.37.0.html)
 
 This crate provides a super-fast decimal number parser from strings into floats.
 
@@ -17,7 +17,7 @@ fast-float = "0.1"
 
 There are no dependencies and the crate can be used in a no_std context by disabling the "std" feature.
 
-*Compiler support: rustc 1.47+.*
+*Compiler support: rustc 1.37+.*
 
 ## Usage
 
