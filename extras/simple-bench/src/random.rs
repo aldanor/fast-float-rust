@@ -63,6 +63,19 @@ impl RandomGen {
         ]
     }
 
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Uniform,
+            Self::OneOverRand32,
+            Self::SimpleUniform32,
+            Self::SimpleInt32,
+            Self::IntEInt,
+            Self::SimpleInt64,
+            Self::BigIntDotInt,
+            Self::BigInts,
+        ]
+    }
+
     pub fn gen(&self, rng: &mut Rng) -> String {
         match self {
             Self::Uniform
