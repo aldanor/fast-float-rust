@@ -126,11 +126,13 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
 
     // handle optional +/- sign
     let mut negative = false;
-    if s.first_either(b'-', b'+') {
-        negative = s.first_is(b'-');
+    if s.first() == b'-' {
+        negative = true;
         if s.step().is_empty() {
             return None;
         }
+    } else if s.first() == b'+' && s.step().is_empty() {
+        return None;
     }
 
     // parse initial digits before dot
