@@ -14,6 +14,7 @@ members = ["."]
 [dependencies]
 fast-float = { path = ".." }
 libfuzzer-sys = "0.3"
+ryu = "1.0"
 
 [[bin]]
 name = "fast_float"
