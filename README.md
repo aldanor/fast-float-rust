@@ -109,8 +109,7 @@ into a 64-bit float.
 Parsers:
 
 - `fast-float` - this very crate
-- `lexical` – from `lexical_core` crate, v0.7
-- `lexical/lossy` - from `lexical_core` crate, v0.7 (lossy parser)
+- `lexical` – `lexical_core`, v0.7 (non-lossy; same performance as lossy)
 - `from_str` – Rust standard library, `FromStr` trait
 - `fast_float (C++)` – original C++ implementation of 'fast-float' method
 - `abseil (C++)` – Abseil C++ Common Libraries

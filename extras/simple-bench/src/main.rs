@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Instant;
 
 use fastrand::Rng;
-use lexical::{FromLexical, FromLexicalLossy};
+use lexical::FromLexical;
 use structopt::StructOpt;
 
 use fast_float::FastFloat;
@@ -109,7 +109,6 @@ fn run_bench<T: FastFloat, F: Fn(&str) -> T>(
 enum Method {
     FastFloat,
     Lexical,
-    LexicalLossy,
     FromStr,
 }
 
@@ -126,12 +125,11 @@ impl Method {
         match self {
             Self::FastFloat => "fast-float",
             Self::Lexical => "lexical",
-            Self::LexicalLossy => "lexical/lossy",
             Self::FromStr => "from_str",
         }
     }
 
-    fn run_as<T: FastFloat + FromLexical + FromLexicalLossy + FromStr>(
+    fn run_as<T: FastFloat + FromLexical + FromStr>(
         &self,
         input: &Input,
         repeat: usize,
@@ -144,11 +142,6 @@ impl Method {
             }),
             Self::Lexical => run_bench(data, repeat, |s: &str| {
                 lexical_core::parse_partial::<T>(s.as_bytes())
-                    .unwrap_or_default()
-                    .0
-            }),
-            Self::LexicalLossy => run_bench(data, repeat, |s: &str| {
-                lexical_core::parse_partial_lossy::<T>(s.as_bytes())
                     .unwrap_or_default()
                     .0
             }),
@@ -172,12 +165,7 @@ impl Method {
     }
 
     pub fn all() -> &'static [Self] {
-        &[
-            Method::FastFloat,
-            Method::Lexical,
-            Method::LexicalLossy,
-            Method::FromStr,
-        ]
+        &[Method::FastFloat, Method::Lexical, Method::FromStr]
     }
 }
 
