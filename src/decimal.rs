@@ -190,6 +190,7 @@ impl Decimal {
 pub fn parse_decimal(mut s: &[u8]) -> Decimal {
     // can't fail since it follows a call to parse_number
     let mut d = Decimal::default();
+    let start = s;
     let c = s.get_first();
     d.negative = c == b'-';
     if c == b'-' || c == b'+' {
@@ -217,6 +218,24 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
         parse_digits(&mut s, |digit| d.try_add_digit(digit));
         d.decimal_point = s.len() as i32 - first.len() as i32;
     }
+    if d.num_digits != 0 {
+        // Ignore the trailing zeros if there are any
+        let mut n_trailing_zeros = 0;
+        for &c in start[..(start.len() - s.len())].iter().rev() {
+            if c == b'0' {
+                n_trailing_zeros += 1;
+            } else if c != b'.' {
+                break;
+            }
+        }
+        d.decimal_point += n_trailing_zeros as i32;
+        d.num_digits -= n_trailing_zeros;
+        d.decimal_point += d.num_digits as i32;
+        if d.num_digits > Decimal::MAX_DIGITS {
+            d.truncated = true;
+            d.num_digits = Decimal::MAX_DIGITS;
+        }
+    }
     if s.check_first2(b'e', b'E') {
         s = s.advance(1);
         let mut neg_exp = false;
@@ -233,11 +252,6 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
             }
         });
         d.decimal_point += if neg_exp { -exp_num } else { exp_num };
-    }
-    d.decimal_point += d.num_digits as i32;
-    if d.num_digits > Decimal::MAX_DIGITS {
-        d.truncated = true;
-        d.num_digits = Decimal::MAX_DIGITS;
     }
     for i in d.num_digits..Decimal::MAX_DIGITS_WITHOUT_OVERFLOW {
         d.digits[i] = 0;
