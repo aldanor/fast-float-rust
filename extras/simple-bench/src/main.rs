@@ -2,7 +2,7 @@ mod random;
 
 use std::fs;
 use std::iter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -27,6 +27,9 @@ struct Opt {
     /// How many times to repeat parsing
     #[structopt(short, default_value = "1000")]
     repeat: usize,
+    /// Only run fast-float benches
+    #[structopt(short)]
+    only_fast_float: bool,
     #[structopt(subcommand)]
     command: Cmd,
 }
@@ -49,8 +52,8 @@ enum Cmd {
         )]
         gen: RandomGen,
         /// Number of random floats generated
-        #[structopt(short, default_value = "100000")]
-        number: usize,
+        #[structopt(short = "n", default_value = "50000")]
+        count: usize,
         /// Random generator seed
         #[structopt(short, default_value = "0")]
         seed: u64,
@@ -58,83 +61,148 @@ enum Cmd {
         #[structopt(short = "f", parse(from_os_str))]
         filename: Option<PathBuf>,
     },
+    /// Run all benchmarks for fast-float only
+    All {
+        /// Number of random floats generated
+        #[structopt(short = "n", default_value = "50000")]
+        count: usize,
+        /// Random generator seed
+        #[structopt(short, default_value = "0")]
+        seed: u64,
+    },
 }
 
 #[derive(Debug, Clone)]
 struct BenchResult {
     pub name: String,
     pub times: Vec<i64>,
+    pub count: usize,
+    pub bytes: usize,
 }
 
-fn run_one_bench<T: FastFloat, F: Fn(&str) -> T>(
-    name: &str,
+fn black_box<T>(dummy: T) -> T {
+    unsafe {
+        let ret = core::ptr::read_volatile(&dummy);
+        core::mem::forget(dummy);
+        ret
+    }
+}
+
+fn run_bench<T: FastFloat, F: Fn(&str) -> T>(
     inputs: &[String],
     repeat: usize,
     func: F,
-) -> BenchResult {
-    let mut times = Vec::with_capacity(repeat);
-    let mut dummy = T::default();
-    for _ in 0..repeat {
+) -> Vec<i64> {
+    const WARMUP: usize = 1000;
+    let mut times = Vec::with_capacity(repeat + WARMUP);
+    for _ in 0..repeat + WARMUP {
         let t0 = Instant::now();
         for input in inputs {
-            dummy = dummy + func(input.as_str());
+            black_box(func(input.as_str()));
         }
         times.push(t0.elapsed().as_nanos() as _);
     }
-    assert_ne!(dummy, T::default());
-    times.sort();
-    let name = name.into();
-    BenchResult { name, times }
+    times.split_at(WARMUP).1.into()
 }
 
-fn run_all_benches<T: FastFloat + FromLexical + FromLexicalLossy + FromStr>(
-    inputs: &[String],
-    repeat: usize,
-) -> Vec<BenchResult> {
-    let ff_func = |s: &str| fast_float::parse_partial::<T, _>(s).unwrap_or_default().0;
-    let ff_res = run_one_bench("fast_float", inputs, repeat, ff_func);
-
-    let lex_func = |s: &str| {
-        lexical_core::parse_partial::<T>(s.as_bytes())
-            .unwrap_or_default()
-            .0
-    };
-    let lex_res = run_one_bench("lexical", inputs, repeat, lex_func);
-
-    let lexl_func = |s: &str| {
-        lexical_core::parse_partial_lossy::<T>(s.as_bytes())
-            .unwrap_or_default()
-            .0
-    };
-    let lexl_res = run_one_bench("lexical/lossy", inputs, repeat, lexl_func);
-
-    let std_func = |s: &str| s.parse::<T>().unwrap_or_default();
-    let std_res = run_one_bench("from_str", inputs, repeat, std_func);
-
-    vec![ff_res, lex_res, lexl_res, std_res]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum Method {
+    FastFloat,
+    Lexical,
+    LexicalLossy,
+    FromStr,
 }
 
-fn print_report(inputs: &[String], results: &[BenchResult], inputs_name: &str, ty: &str) {
-    let n = inputs.len();
-    let mb = (inputs.iter().map(|s| s.len()).sum::<usize>() as f64) / 1024. / 1024.;
+fn type_str(float32: bool) -> &'static str {
+    if float32 {
+        "f32"
+    } else {
+        "f64"
+    }
+}
 
-    let width = 76;
+impl Method {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::FastFloat => "fast-float",
+            Self::Lexical => "lexical",
+            Self::LexicalLossy => "lexical/lossy",
+            Self::FromStr => "from_str",
+        }
+    }
+
+    fn run_as<T: FastFloat + FromLexical + FromLexicalLossy + FromStr>(
+        &self,
+        input: &Input,
+        repeat: usize,
+        name: &str,
+    ) -> BenchResult {
+        let data = &input.data;
+        let times = match self {
+            Self::FastFloat => run_bench(data, repeat, |s: &str| {
+                fast_float::parse_partial::<T, _>(s).unwrap_or_default().0
+            }),
+            Self::Lexical => run_bench(data, repeat, |s: &str| {
+                lexical_core::parse_partial::<T>(s.as_bytes())
+                    .unwrap_or_default()
+                    .0
+            }),
+            Self::LexicalLossy => run_bench(data, repeat, |s: &str| {
+                lexical_core::parse_partial_lossy::<T>(s.as_bytes())
+                    .unwrap_or_default()
+                    .0
+            }),
+            Self::FromStr => run_bench(data, repeat, |s: &str| s.parse::<T>().unwrap_or_default()),
+        };
+
+        BenchResult {
+            times,
+            name: name.into(),
+            count: input.count(),
+            bytes: input.bytes(),
+        }
+    }
+
+    pub fn run(&self, input: &Input, repeat: usize, name: &str, float32: bool) -> BenchResult {
+        if float32 {
+            self.run_as::<f32>(input, repeat, name)
+        } else {
+            self.run_as::<f64>(input, repeat, name)
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Method::FastFloat,
+            Method::Lexical,
+            Method::LexicalLossy,
+            Method::FromStr,
+        ]
+    }
+}
+
+fn print_report(results: &[BenchResult], title: &str) {
+    let width = 81;
     println!("{:=<width$}", "", width = width + 4);
-    println!(
-        "| {:^width$} |",
-        format!("{} ({}, {:.2} MB, {})", inputs_name, n, mb, ty),
-        width = width
-    );
+    println!("| {:^width$} |", title, width = width);
     println!("|{:=<width$}|", "", width = width + 2);
-    let n = n as f64;
-    print_table("ns/float", results, width, |t| t / n);
-    print_table("Mfloat/s", results, width, |t| 1e3 * n / t);
-    print_table("MB/s", results, width, |t| mb * 1e9 / t);
+    print_table("ns/float", results, width, |t, n, _| t as f64 / n as f64);
+    print_table("Mfloat/s", results, width, |t, n, _| {
+        1e3 * n as f64 / t as f64
+    });
+    print_table("MB/s", results, width, |t, _, b| {
+        b as f64 * 1e9 / 1024. / 1024. / t as f64
+    });
     println!("|{:width$}|", "", width = width + 2);
     println!("{:=<width$}", "", width = width + 4);
 }
 
-fn print_table(title: &str, results: &[BenchResult], width: usize, transform: impl Fn(f64) -> f64) {
+fn print_table(
+    heading: &str,
+    results: &[BenchResult],
+    width: usize,
+    transform: impl Fn(i64, usize, usize) -> f64,
+) {
     let repeat = results[0].times.len();
     let columns = &[
         ("min", 0),
@@ -149,7 +217,7 @@ fn print_table(title: &str, results: &[BenchResult], width: usize, transform: im
     let h = width - 7 * w;
 
     println!("|{:width$}|", "", width = width + 2);
-    print!("| {:<h$}", title, h = h);
+    print!("| {:<h$}", heading, h = h);
     for (name, _) in columns {
         print!("{:>w$}", name, w = w);
     }
@@ -157,46 +225,117 @@ fn print_table(title: &str, results: &[BenchResult], width: usize, transform: im
     println!("|{:-<width$}|", "", width = width + 2);
     for res in results {
         print!("| {:<h$}", res.name, h = h);
+        let (n, b) = (res.count, res.bytes);
+        let mut metrics = res
+            .times
+            .iter()
+            .map(|&t| transform(t, n, b))
+            .collect::<Vec<_>>();
+        metrics.sort_by(|a, b| a.partial_cmp(b).unwrap());
         for &(_, idx) in columns {
-            print!("{:>w$.2}", transform(res.times[idx] as f64), w = w);
+            print!("{:>w$.2}", metrics[idx], w = w);
         }
         println!(" |");
     }
 }
 
+struct Input {
+    pub data: Vec<String>,
+    pub name: String,
+}
+
+impl Input {
+    pub fn from_file(filename: impl AsRef<Path>) -> Self {
+        let filename = filename.as_ref();
+        let data = fs::read_to_string(&filename)
+            .unwrap()
+            .trim()
+            .lines()
+            .map(String::from)
+            .collect();
+        let name = filename.file_name().unwrap().to_str().unwrap().into();
+        Self { data, name }
+    }
+
+    pub fn from_random(gen: RandomGen, count: usize, seed: u64) -> Self {
+        let mut rng = Rng::with_seed(seed);
+        let data = iter::repeat_with(|| gen.gen(&mut rng))
+            .take(count)
+            .collect();
+        let name = format!("{}", gen);
+        Self { data, name }
+    }
+
+    pub fn count(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn bytes(&self) -> usize {
+        self.data.iter().map(|s| s.len()).sum()
+    }
+
+    pub fn title(&self, float32: bool) -> String {
+        format!(
+            "{} ({}, {:.2} MB, {})",
+            self.name,
+            self.count(),
+            self.bytes() as f64 / 1024. / 1024.,
+            type_str(float32),
+        )
+    }
+}
+
 fn main() {
     let opt: Opt = StructOpt::from_args();
-    let (inputs, inputs_name) = match opt.command {
-        Cmd::File { filename } => (
-            fs::read_to_string(&filename)
-                .unwrap()
-                .trim()
-                .lines()
-                .map(String::from)
-                .collect::<Vec<_>>(),
-            filename.to_str().unwrap().to_owned(),
-        ),
+
+    let methods = if !opt.only_fast_float && !matches!(&opt.command, &Cmd::All {..}) {
+        Method::all().into()
+    } else {
+        vec![Method::FastFloat]
+    };
+
+    let inputs = match opt.command {
+        Cmd::File { filename } => vec![Input::from_file(filename)],
         Cmd::Random {
             gen,
-            number,
+            count,
             seed,
             filename,
         } => {
-            let mut rng = Rng::with_seed(seed);
-            let inputs: Vec<String> = iter::repeat_with(|| gen.gen(&mut rng))
-                .take(number)
-                .collect();
+            let input = Input::from_random(gen, count, seed);
             if let Some(filename) = filename {
-                fs::write(filename, inputs.join("\n")).unwrap();
+                fs::write(filename, input.data.join("\n")).unwrap();
             }
-            (inputs, format!("{}", gen))
+            vec![input]
+        }
+        Cmd::All { count, seed } => {
+            let mut inputs = vec![];
+            let data_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ext/data");
+            inputs.push(Input::from_file(data_dir.join("mesh.txt")));
+            inputs.push(Input::from_file(data_dir.join("canada.txt")));
+            for &gen in RandomGen::all() {
+                inputs.push(Input::from_random(gen, count, seed))
+            }
+            inputs
         }
     };
-    let repeat = opt.repeat.max(1);
-    let (results, ty) = if opt.float32 {
-        (run_all_benches::<f32>(&inputs, repeat), "f32")
+
+    let mut results = vec![];
+    for input in &inputs {
+        for method in &methods {
+            let name = if inputs.len() == 1 {
+                method.name()
+            } else {
+                &input.name
+            };
+            results.push(method.run(input, opt.repeat.max(1), name, opt.float32));
+        }
+    }
+
+    let title = if inputs.len() == 1 {
+        inputs[0].title(opt.float32)
     } else {
-        (run_all_benches::<f64>(&inputs, repeat), "f64")
+        format!("fast-float (all, {})", type_str(opt.float32))
     };
-    print_report(&inputs, &results, &inputs_name, ty);
+    print_report(&results, &title);
 }

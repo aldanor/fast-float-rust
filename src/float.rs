@@ -68,10 +68,12 @@ impl Float for f32 {
     }
 
     #[inline]
-    #[allow(clippy::use_self)]
     fn pow10_fast_path(exponent: usize) -> Self {
-        const TABLE: [f32; 11] = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10];
-        unsafe { *TABLE.get_unchecked(exponent) }
+        #[allow(clippy::use_self)]
+        const TABLE: [f32; 16] = [
+            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.,
+        ];
+        TABLE[exponent & 15]
     }
 }
 
@@ -102,10 +104,10 @@ impl Float for f64 {
     #[inline]
     fn pow10_fast_path(exponent: usize) -> Self {
         #[allow(clippy::use_self)]
-        const TABLE: [f64; 23] = [
+        const TABLE: [f64; 32] = [
             1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
-            1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+            1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ];
-        unsafe { *TABLE.get_unchecked(exponent) }
+        TABLE[exponent & 31]
     }
 }
