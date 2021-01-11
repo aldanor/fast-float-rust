@@ -21,13 +21,14 @@ macro_rules! check {
         check!($ty, $s, core::$ty::NEG_INFINITY)
     }};
     ($ty:ident, $s:expr, $e:expr) => {{
-        let s = $s.as_bytes();
+        let string = String::from($s);
+        let s = string.as_bytes();
         let expected: $ty = $e;
         let result = fast_float::parse::<$ty, _>(s).unwrap();
         assert_eq!(result, expected);
         let lex = lexical_core::parse::<$ty>(s).unwrap();
         assert_eq!(result, lex);
-        let std = <$ty>::from_str($s);
+        let std = <$ty>::from_str(string.as_str());
         if let Ok(std) = std {
             // stdlib can't parse all weird floats
             if std.is_finite() && result.is_finite() {
@@ -82,6 +83,14 @@ macro_rules! check_f64_neg_inf {
     ($s:expr) => {
         check!(f64, $s, neg_inf)
     };
+}
+
+fn append_zeros(s: impl AsRef<str>, n: usize) -> String {
+    let mut s = String::from(s.as_ref());
+    for _ in 0..n {
+        s.push('0');
+    }
+    s
 }
 
 #[test]
@@ -200,6 +209,17 @@ fn test_f64_long() {
 
 #[test]
 fn test_f64_general() {
+    check_f64!("9007199254740993.0", hexf64("0x1.p+53"));
+    check_f64!(append_zeros("9007199254740993.0", 1000), hexf64("0x1.p+53"));
+    check_f64!("10000000000000000000", hexf64("0x1.158e460913dp+63"));
+    check_f64!(
+        "10000000000000000000000000000001000000000000",
+        hexf64("0x1.cb2d6f618c879p+142")
+    );
+    check_f64!(
+        "10000000000000000000000000000000000000000001",
+        hexf64("0x1.cb2d6f618c879p+142")
+    );
     check_f64!(1.1920928955078125e-07);
     check_f64!("-0", -0.0);
     check_f64!(
@@ -277,6 +297,23 @@ fn test_f32_inf() {
 
 #[test]
 fn test_f32_basic() {
+    let f1 = "\
+        1.175494140627517859246175898662808184331245864732796240031385942718174675986064\
+        7699724722770042717456817626953125";
+    check_f32!(f1, hexf32("0x1.2ced3p+0"));
+    check_f32!(format!("{}e-38", f1), hexf32("0x1.fffff8p-127"));
+    check_f32!(
+        format!("{}e-38", append_zeros(f1, 655)),
+        hexf32("0x1.fffff8p-127")
+    );
+    check_f32!(
+        format!("{}e-38", append_zeros(f1, 656)),
+        hexf32("0x1.fffff8p-127")
+    );
+    check_f32!(
+        format!("{}e-38", append_zeros(f1, 1000)),
+        hexf32("0x1.fffff8p-127")
+    );
     check_f32!(1.00000006e+09);
     check_f32!(1.4012984643e-45);
     check_f32!(1.1754942107e-38);
