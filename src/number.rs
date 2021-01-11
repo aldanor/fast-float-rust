@@ -120,7 +120,8 @@ fn parse_scientific(s: &mut AsciiStr<'_>) -> i64 {
 
 #[inline]
 pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
-    // assuming s.len() >= 1
+    debug_assert!(!s.is_empty());
+
     let mut s = AsciiStr::new(s);
     let start = s;
 
@@ -134,6 +135,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     } else if s.first() == b'+' && s.step().is_empty() {
         return None;
     }
+    debug_assert!(!s.is_empty());
 
     // parse initial digits before dot
     let mut mantissa = 0_u64;
