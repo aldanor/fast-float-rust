@@ -68,9 +68,8 @@ fn try_parse_19digits(s: &mut AsciiStr<'_>, x: &mut u64) {
 }
 
 #[inline]
-fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
+fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) {
     // may cause overflows, to be handled later
-    let mut count = 0;
     if cfg!(target_endian = "little") {
         if let Some(v) = s.try_read_u64() {
             if is_8digits_le(v) {
@@ -78,20 +77,17 @@ fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
                     .wrapping_mul(1_0000_0000)
                     .wrapping_add(parse_8digits_le(v));
                 s.step_by(8);
-                count = 8;
                 if let Some(v) = s.try_read_u64() {
                     if is_8digits_le(v) {
                         *x = x
                             .wrapping_mul(1_0000_0000)
                             .wrapping_add(parse_8digits_le(v));
                         s.step_by(8);
-                        count = 16;
                     }
                 }
             }
         }
     }
-    count
 }
 
 #[inline]
