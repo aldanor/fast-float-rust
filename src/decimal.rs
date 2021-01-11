@@ -29,7 +29,7 @@ impl PartialEq for Decimal {
             && self.decimal_point == other.decimal_point
             && self.negative == other.negative
             && self.truncated == other.truncated
-            && &self.digits[..] == &other.digits[..]
+            && self.digits[..] == other.digits[..]
     }
 }
 
