@@ -171,8 +171,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     let len = s.offset_from(&start) as _;
 
     // handle uncommon case with many digits
-    n_digits -= 19;
-    if n_digits <= 0 {
+    if n_digits <= 19 {
         return Some((
             Number {
                 exponent,
@@ -184,6 +183,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
         ));
     }
 
+    n_digits -= 19;
     let mut many_digits = false;
     let mut p = digits_start;
     while p.check_first_either(b'0', b'.') {
