@@ -92,15 +92,15 @@ C++ library, here are few brief notes:
 
 ## Benchmarks
 
-Below is the table of average timings in nanoseconds for parsing a single number 
+Below is the table of best timings in nanoseconds for parsing a single number 
 into a 64-bit float.
 
 |                  | `canada` | `mesh`   | `uniform` | `iidi` | `iei`  | `rec32` |
 | ---------------- | -------- | -------- | --------- | ------ | ------ | ------- |
-| fast-float       | 22.08    | 11.10    | 20.04     | 40.77  | 26.33  | 29.84   |
-| lexical          | 61.63    | 25.10    | 53.77     | 72.33  | 53.39  | 72.40   |
-| lexical/lossy    | 61.51    | 25.24    | 54.00     | 71.30  | 52.87  | 71.71   |
-| from_str         | 175.07   | 22.58    | 103.00    | 228.78 | 115.76 | 211.13  |
+| fast-float       | 21.58    | 10.70    | 19.36     | 40.50  | 26.07  | 29.13   |
+| lexical          | 65.90    | 23.28    | 54.75     | 75.80  | 52.18  | 75.36   |
+| lexical/lossy    | 65.90    | 23.28    | 54.75     | 75.80  | 52.18  | 75.36   |
+| from_str         | 174.43   | 22.30    | 99.93     | 227.76 | 111.31 | 204.46  |
 | fast_float (C++) | 22.78    | 10.99    | 20.05     | 41.12  | 27.51  | 30.85   |
 | abseil (C++)     | 42.66    | 32.88    | 46.01     | 50.83  | 46.33  | 49.95   |
 | netlib (C++)     | 57.53    | 24.86    | 64.72     | 56.63  | 36.20  | 67.29   |
@@ -109,8 +109,7 @@ into a 64-bit float.
 Parsers:
 
 - `fast-float` - this very crate
-- `lexical` – from `lexical_core` crate, v0.7
-- `lexical/lossy` - from `lexical_core` crate, v0.7 (lossy parser)
+- `lexical` – `lexical_core`, v0.7 (non-lossy; same performance as lossy)
 - `from_str` – Rust standard library, `FromStr` trait
 - `fast_float (C++)` – original C++ implementation of 'fast-float' method
 - `abseil (C++)` – Abseil C++ Common Libraries

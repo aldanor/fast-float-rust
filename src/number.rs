@@ -68,9 +68,8 @@ fn try_parse_19digits(s: &mut AsciiStr<'_>, x: &mut u64) {
 }
 
 #[inline]
-fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
+fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) {
     // may cause overflows, to be handled later
-    let mut count = 0;
     if cfg!(target_endian = "little") {
         if let Some(v) = s.try_read_u64() {
             if is_8digits_le(v) {
@@ -78,20 +77,17 @@ fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) -> usize {
                     .wrapping_mul(1_0000_0000)
                     .wrapping_add(parse_8digits_le(v));
                 s.step_by(8);
-                count = 8;
                 if let Some(v) = s.try_read_u64() {
                     if is_8digits_le(v) {
                         *x = x
                             .wrapping_mul(1_0000_0000)
                             .wrapping_add(parse_8digits_le(v));
                         s.step_by(8);
-                        count = 16;
                     }
                 }
             }
         }
     }
-    count
 }
 
 #[inline]
@@ -124,18 +120,22 @@ fn parse_scientific(s: &mut AsciiStr<'_>) -> i64 {
 
 #[inline]
 pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
-    // assuming s.len() >= 1
+    debug_assert!(!s.is_empty());
+
     let mut s = AsciiStr::new(s);
     let start = s;
 
     // handle optional +/- sign
     let mut negative = false;
-    if s.first_either(b'-', b'+') {
-        negative = s.first_is(b'-');
+    if s.first() == b'-' {
+        negative = true;
         if s.step().is_empty() {
             return None;
         }
+    } else if s.first() == b'+' && s.step().is_empty() {
+        return None;
     }
+    debug_assert!(!s.is_empty());
 
     // parse initial digits before dot
     let mut mantissa = 0_u64;
@@ -171,8 +171,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     let len = s.offset_from(&start) as _;
 
     // handle uncommon case with many digits
-    n_digits -= 19;
-    if n_digits <= 0 {
+    if n_digits <= 19 {
         return Some((
             Number {
                 exponent,
@@ -184,6 +183,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
         ));
     }
 
+    n_digits -= 19;
     let mut many_digits = false;
     let mut p = digits_start;
     while p.check_first_either(b'0', b'.') {
