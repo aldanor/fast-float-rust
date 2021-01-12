@@ -66,6 +66,17 @@ Infinity and NaN values can be parsed, along with scientific notation.
 Both little-endian and big-endian platforms are equally supported, with extra optimizations enabled
 on little-endian architectures.
 
+## Testing
+
+There are a few ways this crate is tested:
+
+- A suite of explicit tests (taken from the original library) covering lots of edge cases.
+- A file-based test suite (taken from the original library; credits to Nigel Tao), ~5M tests.
+- All 4B float32 numbers are exhaustively roundtripped via ryu formatter.
+- Roundtripping a large quantity of random float64 numbers via ryu formatter.
+- Roundtripping float64 numbers and fuzzing random input strings via cargo-fuzz.
+- All explicit test suites run on CI; roundtripping and fuzzing are run manually.
+
 ## Performance
 
 The presented parser seems to beat all of the existing C/C++/Rust float parsers known to us at the
