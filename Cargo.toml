@@ -22,6 +22,7 @@ lexical-core = "0.7"
 hexf-parse = "0.1"
 ryu = "1.0"
 fastrand = "1.4"
+num-bigint = "0.3"
 
 [workspace]
 members = [".", "extras/data-tests", "extras/simple-bench"]

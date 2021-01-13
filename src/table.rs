@@ -2,6 +2,51 @@ pub const SMALLEST_POWER_OF_FIVE: i32 = -342;
 pub const LARGEST_POWER_OF_FIVE: i32 = 308;
 pub const N_POWERS_OF_FIVE: usize = (LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use num_bigint::BigUint;
+
+    fn compute_pow5_128(q: i32) -> (u64, u64) {
+        let mut c = if q < 0 {
+            let pow5 = BigUint::from(5_u8).pow((-q) as u32);
+            let mut z = 0_u16;
+            while (BigUint::from(1_u8) << z) < pow5 {
+                z += 1;
+            }
+            let b = if q < -27 { 2 * z + 128 } else { z + 127 };
+            (BigUint::from(1_u8) << b) / pow5 + BigUint::from(1_u8)
+        } else {
+            BigUint::from(5_u8).pow(q as u32)
+        };
+        while c < (BigUint::from(1_u8) << 127) {
+            c <<= 1;
+        }
+        while c >= (BigUint::from(1_u8) << 128) {
+            c >>= 1;
+        }
+        let mut digits = c.to_u32_digits();
+        while digits.len() < 4 {
+            digits.push(0);
+        }
+        assert_eq!(digits.len(), 4);
+        let lo = (digits[0] as u64) + (digits[1] as u64 * (1_u64 << 32));
+        let hi = (digits[2] as u64) + (digits[3] as u64 * (1_u64 << 32));
+        (hi, lo)
+    }
+
+    #[test]
+    fn test_pow5_table() {
+        for q in SMALLEST_POWER_OF_FIVE..=LARGEST_POWER_OF_FIVE {
+            let (hi, lo) = compute_pow5_128(q);
+            let expected = POWER_OF_FIVE_128[(q - SMALLEST_POWER_OF_FIVE) as usize];
+            assert_eq!(hi, expected.0);
+            assert_eq!(lo, expected.1);
+        }
+    }
+}
+
 #[allow(clippy::unreadable_literal)]
 pub const POWER_OF_FIVE_128: [(u64, u64); N_POWERS_OF_FIVE] = [
     (0xeef453d6923bd65a, 0x113faa2906a13b3f),
