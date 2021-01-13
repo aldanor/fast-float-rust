@@ -53,6 +53,7 @@ mod float;
 mod number;
 mod parse;
 mod simple;
+mod table;
 
 /// Opaque error type for fast-float parsing functions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
