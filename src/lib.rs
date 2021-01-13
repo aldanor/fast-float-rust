@@ -82,7 +82,7 @@ pub trait FastFloat: float::Float {
     /// # Errors
     ///
     /// Will return an error either if the string is not a valid decimal number.
-    /// or if any characterse are left remaining unparsed.
+    /// or if any characters are left remaining unparsed.
     #[inline]
     fn parse_float<S: AsRef<[u8]>>(s: S) -> Result<Self> {
         let s = s.as_ref();
@@ -115,7 +115,7 @@ impl FastFloat for f64 {}
 /// # Errors
 ///
 /// Will return an error either if the string is not a valid decimal number
-/// or if any characterse are left remaining unparsed.
+/// or if any characters are left remaining unparsed.
 #[inline]
 pub fn parse<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<T> {
     T::parse_float(s)
