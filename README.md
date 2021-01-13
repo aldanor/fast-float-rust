@@ -82,11 +82,11 @@ There are a few ways this crate is tested:
 The presented parser seems to beat all of the existing C/C++/Rust float parsers known to us at the
 moment by a large margin, in all of the datasets we tested it on so far – see detailed benchmarks 
 below (the only exception being the original fast_float C++ library, of course – performance of
-which is within noise bounds of this crate). On modern machines, parsing throughput can reach
-up to 1GB/s.
+which is within noise bounds of this crate). On modern machines like Apple M1, parsing throughput
+can reach up to 1.5 GB/s.
 
 In particular, it is faster than Rust standard library's `FromStr::from_str()` by a factor of 2-8x
-(larger factor for longer float strings).
+(larger factor for longer float strings), and is typically 2-3x faster than the nearest competitors.
 
 While various details regarding the algorithm can be found in the repository for the original
 C++ library, here are few brief notes:
@@ -103,21 +103,52 @@ C++ library, here are few brief notes:
 
 ## Benchmarks
 
-Below is the table of best timings in nanoseconds for parsing a single number 
+Below are tables of best timings in nanoseconds for parsing a single number 
 into a 64-bit float.
+
+#### Intel i7-4771
+
+Intel i7-4771 3.5GHz, macOS, Rust 1.49.
 
 |                  | `canada` | `mesh`   | `uniform` | `iidi` | `iei`  | `rec32` |
 | ---------------- | -------- | -------- | --------- | ------ | ------ | ------- |
 | fast-float       | 21.58    | 10.70    | 19.36     | 40.50  | 26.07  | 29.13   |
 | lexical          | 65.90    | 23.28    | 54.75     | 75.80  | 52.18  | 75.36   |
-| lexical/lossy    | 65.90    | 23.28    | 54.75     | 75.80  | 52.18  | 75.36   |
 | from_str         | 174.43   | 22.30    | 99.93     | 227.76 | 111.31 | 204.46  |
 | fast_float (C++) | 22.78    | 10.99    | 20.05     | 41.12  | 27.51  | 30.85   |
 | abseil (C++)     | 42.66    | 32.88    | 46.01     | 50.83  | 46.33  | 49.95   |
 | netlib (C++)     | 57.53    | 24.86    | 64.72     | 56.63  | 36.20  | 67.29   |
 | strtod (C)       | 286.10   | 31.15    | 258.73    | 295.73 | 205.72 | 315.95  |
 
-Parsers:
+#### Apple M1
+
+Apple M1, macOS, Rust 1.49.
+
+|                  | `canada` | `mesh`   | `uniform` | `iidi` | `iei`  | `rec32` |
+| ---------------- | -------- | -------- | --------- | ------ | ------ | ------- |
+| fast-float       | 14.84    | 5.98     | 11.24     | 33.24  | 21.30  | 17.86   |
+| lexical          | 47.09    | 16.51    | 43.46     | 56.06  | 36.68  | 55.48   |
+| from_str         | 136.00   | 13.84    | 74.64     | 179.87 | 77.91  | 154.53  |
+| fast_float (C++) | 13.71    | 7.28     | 11.71     | 32.94  | 20.64  | 18.30   |
+| abseil (C++)     | 36.55    | 24.20    | 38.48     | 40.86  | 35.46  | 40.09   |
+| netlib (C++)     | 47.19    | 14.12    | 48.85     | 52.28  | 33.70  | 48.79   |
+| strtod (C)       | 176.13   | 21.48    | 165.43    | 187.98 | 132.19 | 190.63  |
+
+#### AMD Rome
+
+AMD Rome, Linux, Rust 1.49.
+
+|                  | `canada` | `mesh`   | `uniform` | `iidi` | `iei`  | `rec32` |
+| ---------------- | -------- | -------- | --------- | ------ | ------ | ------- |
+| fast-float       | 25.90    | 12.12    | 20.54     | 47.01  | 29.23  | 32.36   |
+| lexical          | 63.18    | 22.13    | 54.78     | 81.23  | 55.06  | 79.14   |
+| from_str         | 190.06   | 26.10    | 102.44    | 239.87 | 119.04 | 211.73  |
+| fast_float (C++) | 21.29    | 10.47    | 18.31     | 42.33  | 24.56  | 29.76   |
+| abseil (C++)     | 44.54    | 34.13    | 47.38     | 52.64  | 43.77  | 53.03   |
+| netlib (C++)     | 69.43    | 23.31    | 79.98     | 72.17  | 35.81  | 86.91   |
+| strtod (C)       | 123.37   | 65.68    | 101.58    | 118.36 | 118.61 | 123.72  |
+
+#### Parsers
 
 - `fast-float` - this very crate
 - `lexical` – `lexical_core`, v0.7 (non-lossy; same performance as lossy)
@@ -127,7 +158,7 @@ Parsers:
 - `netlib (C++)` – C++ Network Library
 - `strtod (C)` – C standard library
 
-Datasets:
+#### Datasets
 
 - `canada` – numbers in `canada.txt` file
 - `mesh` – numbers in `mesh.txt` file
@@ -136,16 +167,15 @@ Datasets:
 - `iei` – random numbers of format `%de%d`
 - `rec32` – reciprocals of random 32-bit integers
 
-Notes:
+#### Notes
 
-- Test environment: macOS 10.14.6, clang 11.0, Rust 1.49, 3.5 GHz i7-4771 Haswell.
 - The two test files referred above can be found in 
 [this](https://github.com/lemire/simple_fastfloat_benchmark) repository.
 - The Rust part of the table (along with a few other benchmarks) can be generated via
   the benchmark tool that can be found under `extras/simple-bench` of this repo.
 - The C/C++ part of the table (along with a few other benchmarks and parsers) can be
-  generated via a C++ utility that can be found in [this](https://github.com/lemire/simple_fastfloat_benchmark)
-  repository.
+  generated via a C++ utility that can be found in 
+  [this](https://github.com/lemire/simple_fastfloat_benchmark) repository.
 
 <br>
 
