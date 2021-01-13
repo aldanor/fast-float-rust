@@ -1,4 +1,4 @@
-## 0.2.0 (unreleased)
+## 0.2.0
 
 - Fixed an edge case where long decimals with trailing zeros were truncated.
 - Minor micro-optimization fixes in the fast path parser.

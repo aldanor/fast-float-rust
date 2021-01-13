@@ -12,7 +12,7 @@ This crate provides a super-fast decimal number parser from strings into floats.
 
 ```toml
 [dependencies]
-fast-float = "0.1"
+fast-float = "0.2"
 ```
 
 There are no dependencies and the crate can be used in a no_std context by disabling the "std" feature.
