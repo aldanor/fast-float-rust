@@ -179,7 +179,7 @@ AMD Rome, Linux, Rust 1.49.
 
 <br>
 
-#### Reference
+#### References
 
 - Daniel Lemire, [Number Parsing at a Gigabyte per Second](https://arxiv.org/abs/2101.11408), arXiv:2101.11408
 
