@@ -31,6 +31,7 @@ pub trait Float:
     const MAX_EXPONENT_ROUND_TO_EVEN: i32;
     const MIN_EXPONENT_FAST_PATH: i64;
     const MAX_EXPONENT_FAST_PATH: i64;
+    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64;
     const MINIMUM_EXPONENT: i32;
     const INFINITE_POWER: i32;
     const SIGN_INDEX: usize;
@@ -56,6 +57,7 @@ impl Float for f32 {
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
     const MIN_EXPONENT_FAST_PATH: i64 = -10; // assuming FLT_EVAL_METHOD = 0
     const MAX_EXPONENT_FAST_PATH: i64 = 10;
+    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 = 17;
     const MINIMUM_EXPONENT: i32 = -127;
     const INFINITE_POWER: i32 = 0xFF;
     const SIGN_INDEX: usize = 31;
@@ -90,6 +92,7 @@ impl Float for f64 {
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 23;
     const MIN_EXPONENT_FAST_PATH: i64 = -22; // assuming FLT_EVAL_METHOD = 0
     const MAX_EXPONENT_FAST_PATH: i64 = 22;
+    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 = 37;
     const MINIMUM_EXPONENT: i32 = -1023;
     const INFINITE_POWER: i32 = 0x7FF;
     const SIGN_INDEX: usize = 63;
