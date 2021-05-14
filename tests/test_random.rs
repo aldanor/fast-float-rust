@@ -1,7 +1,7 @@
 #[test]
 #[ignore]
 fn test_f64_random_from_u64() {
-    const N_ITER: usize = 1 << 32;
+    const N_ITER: u64 = 1 << 32;
 
     let rng = fastrand::Rng::with_seed(0);
     let mut buf = ryu::Buffer::new();
