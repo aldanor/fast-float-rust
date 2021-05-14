@@ -1,5 +1,3 @@
-use core::mem;
-
 use crate::binary::compute_float;
 use crate::float::Float;
 use crate::number::{parse_inf_nan, parse_number};
@@ -32,13 +30,5 @@ pub fn parse_float<F: Float>(s: &[u8]) -> Option<(F, usize)> {
     if num.negative {
         word |= 1_u64 << F::SIGN_INDEX;
     }
-    let value = unsafe {
-        if cfg!(target_endian = "big") && mem::size_of::<F>() == 4 {
-            *(&word as *const _ as *const F).add(1)
-        } else {
-            *(&word as *const _ as *const F)
-        }
-    };
-
-    Some((value, rest))
+    Some((F::from_u64_bits(word), rest))
 }

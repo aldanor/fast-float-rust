@@ -41,6 +41,7 @@ pub trait Float:
     const MAX_MANTISSA_FAST_PATH: u64 = 2_u64 << Self::MANTISSA_EXPLICIT_BITS;
 
     fn from_u64(v: u64) -> Self;
+    fn from_u64_bits(v: u64) -> Self;
     fn pow10_fast_path(exponent: usize) -> Self;
 }
 
@@ -67,6 +68,11 @@ impl Float for f32 {
     #[inline]
     fn from_u64(v: u64) -> Self {
         v as _
+    }
+
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        f32::from_bits((v & 0xFFFFFFFF) as u32)
     }
 
     #[inline]
@@ -102,6 +108,11 @@ impl Float for f64 {
     #[inline]
     fn from_u64(v: u64) -> Self {
         v as _
+    }
+
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        f64::from_bits(v)
     }
 
     #[inline]
