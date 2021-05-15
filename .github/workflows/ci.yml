@@ -22,3 +22,32 @@ jobs:
       - run: cargo check
       - run: cargo test
       - run: cd extras/data-tests && cargo run --release
+
+  cross:
+    name: Rust ${{matrix.target}}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - powerpc-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{matrix.target}}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: check
+          args: --target ${{matrix.target}}
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{matrix.target}}
