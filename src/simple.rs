@@ -1,9 +1,9 @@
 use crate::common::AdjustedMantissa;
-use crate::decimal::{parse_decimal, Decimal};
+use crate::decimal::Decimal;
 use crate::float::Float;
 
 #[inline]
-pub fn parse_long_mantissa<F: Float>(s: &[u8]) -> AdjustedMantissa {
+pub fn parse_long_mantissa<F: Float>(mut d: Decimal) -> AdjustedMantissa {
     const MAX_SHIFT: usize = 60;
     const NUM_POWERS: usize = 19;
     const POWERS: [u8; 19] = [
@@ -20,8 +20,6 @@ pub fn parse_long_mantissa<F: Float>(s: &[u8]) -> AdjustedMantissa {
 
     let am_zero = AdjustedMantissa::zero_pow2(0);
     let am_inf = AdjustedMantissa::zero_pow2(F::INFINITE_POWER);
-
-    let mut d = parse_decimal(s);
 
     if d.num_digits == 0 || d.decimal_point < -324 {
         return am_zero;

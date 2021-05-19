@@ -149,6 +149,88 @@ fn parse_scientific(s: &mut AsciiStr<'_>) -> i64 {
 }
 
 #[inline]
+fn parse_integral(s: &mut AsciiStr, start: &AsciiStr, mantissa: &mut u64) -> isize {
+    try_parse_digits(s, mantissa);
+    s.offset_from(start)
+}
+
+#[inline]
+fn parse_fractional(s: &mut AsciiStr, start: &AsciiStr, mantissa: &mut u64) -> isize {
+    try_parse_8digits_le(s, mantissa);
+    try_parse_digits(s, mantissa);
+    s.offset_from(start)
+}
+
+#[inline]
+fn trim_leading_zeros(mut n_digits: isize, mut p: AsciiStr) -> isize {
+    n_digits -= 19;
+    while p.check_first_either(b'0', b'.') {
+        n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
+        p.step();
+    }
+    n_digits
+}
+
+#[inline]
+pub fn parse_number_from_parts(i: &[u8], f: &[u8], e: i64, negative: bool) -> Option<Number> {
+
+    let mut mantissa = 0_u64;
+    let mut i = AsciiStr::new(i);
+    let i_start = i;
+    let mut n_digits = parse_integral(&mut i, &i_start, &mut mantissa);
+
+    let mut f = AsciiStr::new(f);
+    let f_start = f;
+    let int_end = i;
+    let n_after_dot = parse_fractional(&mut f, &f_start, &mut mantissa);
+    n_digits += n_after_dot;
+    let mut exponent = e - n_after_dot as i64;
+
+    if n_digits == 0 {
+        return None;
+    }
+
+    // handle uncommon case with many digits
+    if n_digits <= 19 {
+        return Some(
+            Number {
+                exponent,
+                mantissa,
+                negative,
+                many_digits: false,
+            }
+        );
+    }
+
+    let mut many_digits = false;
+    n_digits = trim_leading_zeros(n_digits, i_start);
+    if n_digits > 0 {
+        // at this point we have more than 19 significant digits, let's try again
+        many_digits = true;
+        mantissa = 0;
+        let mut i = i_start;
+        try_parse_19digits(&mut i, &mut mantissa);
+        exponent = if mantissa >= MIN_19DIGIT_INT {
+            int_end.offset_from(&i) // big int
+        } else {
+            let mut f = f_start;
+            try_parse_19digits(&mut f, &mut mantissa);
+            -f.offset_from(&f_start)
+        } as i64;
+        exponent += e; // add back the explicit part
+    }
+
+    Some(
+        Number {
+            exponent,
+            mantissa,
+            negative,
+            many_digits,
+        },
+    )
+}
+
+#[inline]
 pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     debug_assert!(!s.is_empty());
 
@@ -170,8 +252,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     // parse initial digits before dot
     let mut mantissa = 0_u64;
     let digits_start = s;
-    try_parse_digits(&mut s, &mut mantissa);
-    let mut n_digits = s.offset_from(&digits_start);
+    let mut n_digits = parse_integral(&mut s, &digits_start, &mut mantissa);
 
     // handle dot with the following digits
     let mut n_after_dot = 0;
@@ -180,9 +261,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     if s.check_first(b'.') {
         s.step();
         let before = s;
-        try_parse_8digits_le(&mut s, &mut mantissa);
-        try_parse_digits(&mut s, &mut mantissa);
-        n_after_dot = s.offset_from(&before);
+        n_after_dot = parse_fractional(&mut s, &before, &mut mantissa);
         exponent = -n_after_dot as i64;
     }
 
@@ -213,13 +292,8 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
         ));
     }
 
-    n_digits -= 19;
     let mut many_digits = false;
-    let mut p = digits_start;
-    while p.check_first_either(b'0', b'.') {
-        n_digits -= p.first().saturating_sub(b'0' - 1) as isize; // '0' = b'.' + 2
-        p.step();
-    }
+    n_digits = trim_leading_zeros(n_digits, digits_start);
     if n_digits > 0 {
         // at this point we have more than 19 significant digits, let's try again
         many_digits = true;
