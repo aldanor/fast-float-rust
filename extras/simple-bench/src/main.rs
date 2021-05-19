@@ -108,6 +108,8 @@ fn run_bench<T: FastFloat, F: Fn(&str) -> T>(
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Method {
     FastFloat,
+    #[cfg(feature = "use_tokenized")]
+    FastFloatTokenized,
     Lexical,
     FromStr,
 }
@@ -120,10 +122,87 @@ fn type_str(float32: bool) -> &'static str {
     }
 }
 
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn parse_sign<'a>(s: &'a str) -> (bool, &'a str) {
+    match s.as_bytes().get(0) {
+        Some(&b'+') => (false, &s[1..]),
+        Some(&b'-') => (true, &s[1..]),
+        _ => (false, s),
+    }
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn decimal_index(s: &str) -> Option<usize> {
+    s.as_bytes().iter().position(|&c| c == b'.')
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn exponent_index(s: &str) -> Option<usize> {
+    s.as_bytes().iter().position(|&c| c == b'e' || c == b'E')
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn split_index<'a>(s: &'a str, index: usize) -> (&'a str, &'a str) {
+    let (lead, trail) = s.as_bytes().split_at(index);
+    let trail = &trail[1..];
+    use std::str;
+    unsafe {
+        (str::from_utf8_unchecked(lead), str::from_utf8_unchecked(trail))
+    }
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn split_end<'a>(s: &'a str) -> (&'a str, &'a str) {
+    let (lead, trail) = s.as_bytes().split_at(s.len());
+    use std::str;
+    unsafe {
+        (str::from_utf8_unchecked(lead), str::from_utf8_unchecked(trail))
+    }
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn parse_exponent(s: &str) -> i64 {
+    s.parse::<i64>().unwrap()
+}
+
+#[inline]
+#[cfg(feature = "use_tokenized")]
+fn tokenize<'a>(s: &'a str) -> (&'a str, &'a str, i64, bool) {
+    let (negative, s) = parse_sign(s);
+    if let Some(index) = decimal_index(s) {
+        let (i, rest) = split_index(s, index);
+        if let Some(index) = exponent_index(s) {
+            let (f, exp) = split_index(rest, index);
+            let exp = parse_exponent(exp);
+            (i, f, exp, negative)
+        } else {
+            (i, rest, 0, negative)
+        }
+    } else {
+        if let Some(index) = exponent_index(s) {
+            let (i, exp) = split_index(s, index);
+            let (i, f) = split_end(i);
+            let exp = parse_exponent(exp);
+            (i, f, exp, negative)
+        } else {
+            let (i, f) = split_end(s);
+            (i, f, 0, negative)
+        }
+    }
+}
+
 impl Method {
     pub fn name(&self) -> &'static str {
         match self {
             Self::FastFloat => "fast-float",
+            #[cfg(feature = "use_tokenized")]
+            Self::FastFloatTokenized => "fast-float-tokenized",
             Self::Lexical => "lexical",
             Self::FromStr => "from_str",
         }
@@ -139,6 +218,11 @@ impl Method {
         let times = match self {
             Self::FastFloat => run_bench(data, repeat, |s: &str| {
                 fast_float::parse_partial::<T, _>(s).unwrap_or_default().0
+            }),
+            #[cfg(feature = "use_tokenized")]
+            Self::FastFloatTokenized => run_bench(data, repeat, |s: &str| {
+                let (i, f, e, n) = tokenize(s);
+                fast_float::parse_from_parts::<T, _>(i, f, e, n)
             }),
             Self::Lexical => run_bench(data, repeat, |s: &str| {
                 lexical_core::parse_partial::<T>(s.as_bytes())
@@ -165,7 +249,15 @@ impl Method {
     }
 
     pub fn all() -> &'static [Self] {
-        &[Method::FastFloat, Method::Lexical, Method::FromStr]
+        #[cfg(feature = "use_tokenized")]
+        {
+            &[Method::FastFloat, Method::FastFloatTokenized, Method::Lexical, Method::FromStr]
+        }
+
+        #[cfg(not(feature = "use_tokenized"))]
+        {
+            &[Method::FastFloat, Method::Lexical, Method::FromStr]
+        }
     }
 }
 

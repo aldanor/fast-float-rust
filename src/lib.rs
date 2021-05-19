@@ -105,6 +105,21 @@ pub trait FastFloat: float::Float {
     fn parse_float_partial<S: AsRef<[u8]>>(s: S) -> Result<(Self, usize)> {
         parse::parse_float(s.as_ref()).ok_or(Error)
     }
+
+    /// Parse a pre-tokenized decimal number from string into float.
+    ///
+    /// This assumes the float has already been tokenized into valid
+    /// integral and fractional components, and has parsed an optional
+    /// exponent notation.
+    ///
+    /// It is up to you to validate and tokenize the input: although
+    /// this will not error, this might truncate the significant
+    /// digits as soon as an invalid digit is found. This does not
+    /// handle special values, such as NaN, INF, or Infinity.
+    #[inline]
+    fn parse_from_parts<S: AsRef<[u8]>>(integral: S, fractional: S, exponent: i64, negative: bool) -> Self {
+        parse::parse_from_parts(integral.as_ref(), fractional.as_ref(), exponent, negative)
+    }
 }
 
 impl FastFloat for f32 {}
@@ -133,4 +148,19 @@ pub fn parse<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<T> {
 #[inline]
 pub fn parse_partial<T: FastFloat, S: AsRef<[u8]>>(s: S) -> Result<(T, usize)> {
     T::parse_float_partial(s)
+}
+
+/// Parse a pre-tokenized decimal number from string into float.
+///
+/// This assumes the float has already been tokenized into valid
+/// integral and fractional components, and has parsed an optional
+/// exponent notation.
+///
+/// It is up to you to validate and tokenize the input: although
+/// this will not error, this might truncate the significant
+/// digits as soon as an invalid digit is found. This does not
+/// handle special values, such as NaN, INF, or Infinity.
+#[inline]
+pub fn parse_from_parts<T: FastFloat, S: AsRef<[u8]>>(integral: S, fractional: S, exponent: i64, negative: bool) -> T {
+    T::parse_from_parts(integral.as_ref(), fractional.as_ref(), exponent, negative)
 }

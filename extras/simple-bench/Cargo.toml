@@ -14,3 +14,7 @@ anyhow = "1.0"
 lexical = "5.2"
 lexical-core = "0.7"
 fastrand = "1.4"
+
+[features]
+default = []
+use_tokenized = []

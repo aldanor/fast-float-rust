@@ -187,41 +187,37 @@ impl Decimal {
 }
 
 #[inline]
-pub fn parse_decimal(mut s: &[u8]) -> Decimal {
-    // can't fail since it follows a call to parse_number
-    let mut d = Decimal::default();
-    let start = s;
-    let c = s.get_first();
-    d.negative = c == b'-';
-    if c == b'-' || c == b'+' {
-        s = s.advance(1);
+fn parse_fractional<'a>(mut s: &'a [u8], d: &mut Decimal) -> &'a [u8] {
+    let first = s;
+    if d.num_digits == 0 {
+        s = s.skip_chars(b'0');
     }
-    s = s.skip_chars(b'0');
-    parse_digits(&mut s, |digit| d.try_add_digit(digit));
-    if s.check_first(b'.') {
-        s = s.advance(1);
-        let first = s;
-        if d.num_digits == 0 {
-            s = s.skip_chars(b'0');
-        }
-        if cfg!(target_endian = "little") {
-            while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
-                let v = s.read_u64();
-                if !is_8digits_le(v) {
-                    break;
-                }
-                d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
-                d.num_digits += 8;
-                s = s.advance(8);
+    if cfg!(target_endian = "little") {
+        while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
+            let v = s.read_u64();
+            if !is_8digits_le(v) {
+                break;
             }
+            d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
+            d.num_digits += 8;
+            s = s.advance(8);
         }
-        parse_digits(&mut s, |digit| d.try_add_digit(digit));
-        d.decimal_point = s.len() as i32 - first.len() as i32;
     }
+    parse_digits(&mut s, |digit| d.try_add_digit(digit));
+    d.decimal_point = s.len() as i32 - first.len() as i32;
+
+    s
+}
+
+#[inline]
+fn trim_zeros<'a, Iter>(iter: Iter, d: &mut Decimal)
+where
+    Iter: Iterator<Item=&'a u8>
+{
     if d.num_digits != 0 {
         // Ignore the trailing zeros if there are any
         let mut n_trailing_zeros = 0;
-        for &c in start[..(start.len() - s.len())].iter().rev() {
+        for &c in iter {
             if c == b'0' {
                 n_trailing_zeros += 1;
             } else if c != b'.' {
@@ -236,6 +232,51 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
             d.num_digits = Decimal::MAX_DIGITS;
         }
     }
+}
+
+#[inline]
+fn add_zero_digits(d: &mut Decimal) {
+    for i in d.num_digits..Decimal::MAX_DIGITS_WITHOUT_OVERFLOW {
+        d.digits[i] = 0;
+    }
+}
+
+#[inline]
+pub fn parse_decimal_from_parts(mut i: &[u8], f: &[u8], e: i64, negative: bool) -> Decimal {
+    // can't fail since it follows a call to parse_number
+    let mut d = Decimal::default();
+
+    // Integral
+    let i_start = i;
+    d.negative = negative;
+    i = i.skip_chars(b'0');
+    parse_digits(&mut i, |digit| d.try_add_digit(digit));
+
+    parse_fractional(f, &mut d);
+    trim_zeros(i_start.iter().chain(f.iter()).rev(), &mut d);
+    d.decimal_point += e as i32;
+    add_zero_digits(&mut d);
+
+    d
+}
+
+#[inline]
+pub fn parse_decimal(mut s: &[u8]) -> Decimal {
+    // can't fail since it follows a call to parse_number
+    let mut d = Decimal::default();
+    let start = s;
+    let c = s.get_first();
+    d.negative = c == b'-';
+    if c == b'-' || c == b'+' {
+        s = s.advance(1);
+    }
+    s = s.skip_chars(b'0');
+    parse_digits(&mut s, |digit| d.try_add_digit(digit));
+    if s.check_first(b'.') {
+        s = s.advance(1);
+        s = parse_fractional(s, &mut d);
+    }
+    trim_zeros(start[..(start.len() - s.len())].iter().rev(), &mut d);
     if s.check_first2(b'e', b'E') {
         s = s.advance(1);
         let mut neg_exp = false;
@@ -253,9 +294,7 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
         });
         d.decimal_point += if neg_exp { -exp_num } else { exp_num };
     }
-    for i in d.num_digits..Decimal::MAX_DIGITS_WITHOUT_OVERFLOW {
-        d.digits[i] = 0;
-    }
+    add_zero_digits(&mut d);
     d
 }
 
