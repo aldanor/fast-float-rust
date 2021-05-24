@@ -1,6 +1,6 @@
 use core::fmt::{self, Debug};
 
-use crate::common::{is_8digits_le, parse_digits, ByteSlice};
+use crate::common::{is_8digits, parse_digits, ByteSlice};
 
 #[derive(Clone)]
 pub struct Decimal {
@@ -204,16 +204,14 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
         if d.num_digits == 0 {
             s = s.skip_chars(b'0');
         }
-        if cfg!(target_endian = "little") {
-            while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
-                let v = s.read_u64();
-                if !is_8digits_le(v) {
-                    break;
-                }
-                d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
-                d.num_digits += 8;
-                s = s.advance(8);
+        while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
+            let v = s.read_u64();
+            if !is_8digits(v) {
+                break;
             }
+            d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
+            d.num_digits += 8;
+            s = s.advance(8);
         }
         parse_digits(&mut s, |digit| d.try_add_digit(digit));
         d.decimal_point = s.len() as i32 - first.len() as i32;
