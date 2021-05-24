@@ -1,4 +1,4 @@
-use crate::common::{is_8digits_le, AsciiStr, ByteSlice};
+use crate::common::{is_8digits, AsciiStr, ByteSlice};
 use crate::float::Float;
 
 const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
@@ -70,7 +70,7 @@ impl Number {
 }
 
 #[inline]
-fn parse_8digits_le(mut v: u64) -> u64 {
+fn parse_8digits(mut v: u64) -> u64 {
     const MASK: u64 = 0x0000_00FF_0000_00FF;
     const MUL1: u64 = 0x000F_4240_0000_0064;
     const MUL2: u64 = 0x0000_2710_0000_0001;
@@ -98,22 +98,20 @@ fn try_parse_19digits(s: &mut AsciiStr<'_>, x: &mut u64) {
 }
 
 #[inline]
-fn try_parse_8digits_le(s: &mut AsciiStr<'_>, x: &mut u64) {
+fn try_parse_8digits(s: &mut AsciiStr<'_>, x: &mut u64) {
     // may cause overflows, to be handled later
-    if cfg!(target_endian = "little") {
-        if let Some(v) = s.try_read_u64() {
-            if is_8digits_le(v) {
-                *x = x
-                    .wrapping_mul(1_0000_0000)
-                    .wrapping_add(parse_8digits_le(v));
-                s.step_by(8);
-                if let Some(v) = s.try_read_u64() {
-                    if is_8digits_le(v) {
-                        *x = x
-                            .wrapping_mul(1_0000_0000)
-                            .wrapping_add(parse_8digits_le(v));
-                        s.step_by(8);
-                    }
+    if let Some(v) = s.try_read_u64() {
+        if is_8digits(v) {
+            *x = x
+                .wrapping_mul(1_0000_0000)
+                .wrapping_add(parse_8digits(v));
+            s.step_by(8);
+            if let Some(v) = s.try_read_u64() {
+                if is_8digits(v) {
+                    *x = x
+                        .wrapping_mul(1_0000_0000)
+                        .wrapping_add(parse_8digits(v));
+                    s.step_by(8);
                 }
             }
         }
@@ -180,7 +178,7 @@ pub fn parse_number(s: &[u8]) -> Option<(Number, usize)> {
     if s.check_first(b'.') {
         s.step();
         let before = s;
-        try_parse_8digits_le(&mut s, &mut mantissa);
+        try_parse_8digits(&mut s, &mut mantissa);
         try_parse_digits(&mut s, &mut mantissa);
         n_after_dot = s.offset_from(&before);
         exponent = -n_after_dot as i64;

@@ -90,11 +90,8 @@ impl<'a> AsciiStr<'a> {
     #[inline]
     pub fn read_u64(&self) -> u64 {
         debug_assert!(self.check_len(8));
-        let mut value = 0_u64;
-        let src = self.ptr;
-        let dst = &mut value as *mut _ as *mut u8;
-        unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
-        value
+        let src = self.ptr as *const u64;
+        u64::from_le(unsafe { ptr::read_unaligned(src) })
     }
 
     #[inline]
@@ -159,26 +156,22 @@ pub trait ByteSlice: AsRef<[u8]> + AsMut<[u8]> {
     #[inline]
     fn read_u64(&self) -> u64 {
         debug_assert!(self.as_ref().len() >= 8);
-        let mut value = 0_u64;
-        let src = self.as_ref().as_ptr();
-        let dst = &mut value as *mut _ as *mut u8;
-        unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
-        value
+        let src = self.as_ref().as_ptr() as *const u64;
+        u64::from_le(unsafe { ptr::read_unaligned(src) })
     }
 
     #[inline]
     fn write_u64(&mut self, value: u64) {
         debug_assert!(self.as_ref().len() >= 8);
-        let src = &value as *const _ as *const u8;
-        let dst = self.as_mut().as_mut_ptr();
-        unsafe { ptr::copy_nonoverlapping(src, dst, 8) };
+        let dst = self.as_mut().as_mut_ptr() as *mut u64;
+        unsafe { ptr::write_unaligned(dst, u64::to_le(value)) };
     }
 }
 
 impl ByteSlice for [u8] {}
 
 #[inline]
-pub fn is_8digits_le(v: u64) -> bool {
+pub fn is_8digits(v: u64) -> bool {
     let a = v.wrapping_add(0x4646_4646_4646_4646);
     let b = v.wrapping_sub(0x3030_3030_3030_3030);
     (a | b) & 0x8080_8080_8080_8080 == 0
@@ -210,5 +203,25 @@ impl AdjustedMantissa {
             mantissa: 0,
             power2,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_write_u64() {
+        let bytes = b"01234567";
+        let string = AsciiStr::new(bytes);
+        let int = string.read_u64();
+        assert_eq!(int, 0x3736353433323130);
+
+        let int = bytes.read_u64();
+        assert_eq!(int, 0x3736353433323130);
+
+        let mut slc = [0u8; 8];
+        slc.write_u64(0x3736353433323130);
+        assert_eq!(&slc, bytes);
     }
 }
