@@ -56,8 +56,8 @@ impl Decimal {
     pub fn try_add_digit(&mut self, digit: u8) {
         if self.num_digits < Self::MAX_DIGITS {
             self.digits[self.num_digits] = digit;
+            self.num_digits += 1;
         }
-        self.num_digits += 1;
     }
 
     #[inline]
