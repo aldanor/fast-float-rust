@@ -75,7 +75,8 @@ impl<'a> AsciiStr<'a> {
 
     #[inline]
     pub fn check_len(&self, n: usize) -> bool {
-        unsafe { self.ptr.add(n) <= self.end }
+        let len = self.end as usize - self.ptr as usize;
+        n <= len
     }
 
     #[inline]
