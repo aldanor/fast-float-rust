@@ -276,7 +276,7 @@ impl Input {
 fn main() {
     let opt: Opt = StructOpt::from_args();
 
-    let methods = if !opt.only_fast_float && !matches!(&opt.command, &Cmd::All {..}) {
+    let methods = if !opt.only_fast_float && !matches!(&opt.command, &Cmd::All { .. }) {
         Method::all().into()
     } else {
         vec![Method::FastFloat]
