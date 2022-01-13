@@ -43,6 +43,7 @@
     clippy::module_name_repetitions,
     clippy::cargo_common_metadata
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt::{self, Display};
 
